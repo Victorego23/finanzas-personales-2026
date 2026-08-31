@@ -1,4 +1,4 @@
-const CACHE_NAME = 'finanzas-2026-v5';
+const CACHE_NAME = 'finanzas-2026-v6';
 const ASSETS_TO_CACHE = [
   './styles.css',
   './app.js',
