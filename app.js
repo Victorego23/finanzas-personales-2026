@@ -407,8 +407,7 @@ class FinanceApp {
       }
 
       // Name in Yape: Monica Gar* or similar
-      const nameMatch = rawText.match(/(?:Yapeaste!|yapearon!|Yape a)\s*
-*([A-Za-z\s*]+)/i);
+      const nameMatch = rawText.match(/(?:Yapeaste!|yapearon!|Yape a)\s*([A-Za-z\s*]+)/i);
       if (nameMatch && nameMatch[1].trim().length > 2) {
         description = 'Yape: ' + nameMatch[1].trim().slice(0, 25);
       } else {
