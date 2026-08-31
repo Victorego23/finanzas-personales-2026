@@ -6,12 +6,12 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Finanzas Tommy 2026 - Dashboard Fintech PWA con Gráficos, Escáner OCR de Váuchers y Visor de Comprobantes.">
-  <title>Finanzas Tommy 2026 | Fintech Dashboard 2.0</title>
+  <meta name="description" content="Finanzas Tommy 2026 - Dashboard Fintech PWA Ultra-Rápido con Entrada de 1 Toque y Análisis Gráfico.">
+  <title>Finanzas Tommy 2026 | Fintech Dashboard 3.0</title>
   
   <meta name="theme-color" content="#6366F1">
 
-  <!-- Resource Hints for Performance -->
+  <!-- Resource Hints -->
   <link rel="dns-prefetch" href="https://fonts.googleapis.com">
   <link rel="dns-prefetch" href="https://fonts.gstatic.com">
   <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
@@ -28,23 +28,12 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <!-- Optimized Stylesheet -->
-  <link rel="stylesheet" href="styles.css?v=20">
+  <link rel="stylesheet" href="styles.css?v=30">
   
   <!-- Non-blocking Parallel Script Execution -->
-  <script src="app.js?v=20" defer></script>
+  <script src="app.js?v=30" defer></script>
 </head>
 <body>
-  <!-- Voucher Image Lightbox Modal -->
-  <div id="voucherModal" class="pin-overlay hidden">
-    <div class="voucher-modal-card">
-      <button type="button" id="closeVoucherBtn" class="voucher-close-btn">&times;</button>
-      <h3 id="voucherModalTitle"><i class="fa-solid fa-receipt"></i> Constancia de Comprobante</h3>
-      <div class="voucher-img-wrapper">
-        <img id="voucherModalImg" src="" alt="Váucher Adjunto" class="voucher-modal-img">
-      </div>
-    </div>
-  </div>
-
   <!-- PIN Security Lock Overlay -->
   <div id="pinOverlay" class="pin-overlay hidden">
     <div class="pin-card">
@@ -87,7 +76,7 @@
         </div>
         <div>
           <h1>Finanzas Tommy</h1>
-          <p class="subtitle">Dashboard Fintech 2.0 &bull; Control privado de ingresos, gastos y deudas</p>
+          <p class="subtitle">Fintech Dashboard 3.0 &bull; Control privado de ingresos, gastos y deudas</p>
         </div>
       </div>
 
@@ -115,61 +104,40 @@
 
     <!-- Main Dashboard -->
     <main class="main-dashboard">
-      <!-- Overview KPI Cards Section -->
-      <section class="kpi-grid" aria-label="Resumen Financiero" role="region">
-        <!-- Total Ingresos Card -->
-        <article class="kpi-card card-income">
-          <div class="kpi-header">
-            <span class="kpi-label">Total Ingresos</span>
-            <div class="kpi-icon icon-income" aria-hidden="true">
-              <i class="fa-solid fa-arrow-trend-up"></i>
+      <!-- HERO MASTER BALANCE CARD SECTION -->
+      <section class="hero-balance-section" aria-label="Balance General">
+        <article class="hero-balance-card">
+          <div class="hero-card-header">
+            <div>
+              <span class="hero-card-label">Balance Disponible Neto</span>
+              <div class="hero-card-value" id="netBalance" aria-live="polite">$ 0.00</div>
+            </div>
+            <div class="hero-card-badge">
+              <i class="fa-solid fa-piggy-bank"></i> <span id="healthRatio">0%</span> Ahorro
             </div>
           </div>
-          <div class="kpi-value" id="totalIncome" aria-live="polite">$ 0.00</div>
-          <div class="kpi-subtext">
-            <span id="incomeCount">0</span> registros acumulados
-          </div>
-        </article>
 
-        <!-- Total Gastos Card -->
-        <article class="kpi-card card-expense">
-          <div class="kpi-header">
-            <span class="kpi-label">Total Gastos</span>
-            <div class="kpi-icon icon-expense" aria-hidden="true">
-              <i class="fa-solid fa-arrow-trend-down"></i>
-            </div>
-          </div>
-          <div class="kpi-value" id="totalExpenses" aria-live="polite">$ 0.00</div>
-          <div class="kpi-subtext">
-            <span id="expenseCount">0</span> salidas registradas
-          </div>
-        </article>
-
-        <!-- Balance Neto Card -->
-        <article class="kpi-card card-balance">
-          <div class="kpi-header">
-            <span class="kpi-label">Balance Disponible</span>
-            <div class="kpi-icon icon-balance" aria-hidden="true">
-              <i class="fa-solid fa-scale-balanced"></i>
-            </div>
-          </div>
-          <div class="kpi-value" id="netBalance" aria-live="polite">$ 0.00</div>
-          <div class="kpi-subtext" id="balanceStatusText" aria-live="polite">
+          <div class="hero-subtext" id="balanceStatusText">
             Sin movimientos registrados
           </div>
-        </article>
 
-        <!-- Ratio de Ahorro Card -->
-        <article class="kpi-card card-health">
-          <div class="kpi-header">
-            <span class="kpi-label">Capacidad de Ahorro</span>
-            <div class="kpi-icon icon-health" aria-hidden="true">
-              <i class="fa-solid fa-piggy-bank"></i>
+          <!-- Hero Metrics Grid -->
+          <div class="hero-metrics-grid">
+            <div class="hero-metric-item item-income">
+              <div class="hero-metric-label">
+                <i class="fa-solid fa-arrow-trend-up"></i> Total Ingresos
+              </div>
+              <div class="hero-metric-value" id="totalIncome">$ 0.00</div>
+              <div class="hero-metric-count"><span id="incomeCount">0</span> registros</div>
             </div>
-          </div>
-          <div class="kpi-value" id="healthRatio" aria-live="polite">0%</div>
-          <div class="kpi-subtext">
-            Margen libre de tus ingresos
+
+            <div class="hero-metric-item item-expense">
+              <div class="hero-metric-label">
+                <i class="fa-solid fa-arrow-trend-down"></i> Total Gastos
+              </div>
+              <div class="hero-metric-value" id="totalExpenses">$ 0.00</div>
+              <div class="hero-metric-count"><span id="expenseCount">0</span> salidas</div>
+            </div>
           </div>
         </article>
       </section>
@@ -210,33 +178,15 @@
 
       <!-- Main Workspace: Form & List -->
       <div class="workspace-grid">
-        <!-- Column 1: Add Transaction Form & OCR Photo Scanner -->
+        <!-- Column 1: Add Transaction Form (Ultra-Optimized) -->
         <section class="card-floating form-card" aria-label="Formulario de Registro">
           <div class="card-title">
-            <i class="fa-solid fa-circle-plus" aria-hidden="true"></i>
-            <h2>Nuevo Registro</h2>
+            <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+            <h2>Nuevo Registro Rápido</h2>
           </div>
 
           <form id="transactionForm" novalidate>
-            <!-- OCR Receipt Photo Scanner -->
-            <div class="ocr-scanner-box">
-              <label for="ocrInput" class="btn btn-secondary btn-block btn-ocr" title="Toma una foto o sube una captura de Yape, Kashin, BCP, BBVA, boleta o recibo">
-                <i class="fa-solid fa-camera" aria-hidden="true"></i> <span>Escanear Váucher / Foto</span>
-                <input type="file" id="ocrInput" accept="image/*" class="sr-only">
-              </label>
-              <div id="ocrStatus" class="ocr-status hidden">
-                <div class="ocr-status-top">
-                  <i class="fa-solid fa-bolt" aria-hidden="true"></i>
-                  <span id="ocrStatusText">Leyendo datos del comprobante...</span>
-                </div>
-                <div id="ocrChipsContainer" class="ocr-chips-container"></div>
-                <button type="button" id="ocrQuickAddBtn" class="btn btn-primary btn-sm hidden" style="margin-top: 0.5rem; width: 100%;">
-                  <i class="fa-solid fa-bolt"></i> <span>⚡ Guardar de Frente</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Tipo de Movimiento -->
+            <!-- Tipo de Movimiento Segmented Toggle -->
             <div class="form-group">
               <label id="typeLabel">Tipo de Movimiento</label>
               <div class="type-selector" role="radiogroup" aria-labelledby="typeLabel">
@@ -263,29 +213,38 @@
               <input type="text" id="descriptionInput" class="form-input" placeholder="Ej. Yape Monica, Cuota Kashin, Arriendo..." required autocomplete="off">
             </div>
 
-            <!-- Monto & Categoría -->
-            <div class="form-row">
-              <div class="form-group col-half">
+            <!-- Monto Input + Quick Sum Chips (+10, +50, +100, +500) -->
+            <div class="form-group">
+              <div class="label-with-chips">
                 <label for="amountInput">Monto</label>
-                <input type="number" id="amountInput" class="form-input" placeholder="0.00" min="0.01" step="any" required>
+                <span class="quick-chips-label">Atajos rápidos:</span>
               </div>
+              <input type="number" id="amountInput" class="form-input amount-large-input" placeholder="0.00" min="0.01" step="any" required>
+              
+              <div class="amount-quick-chips">
+                <button type="button" class="quick-chip-btn" data-add="10">+ S/ 10</button>
+                <button type="button" class="quick-chip-btn" data-add="50">+ S/ 50</button>
+                <button type="button" class="quick-chip-btn" data-add="100">+ S/ 100</button>
+                <button type="button" class="quick-chip-btn" data-add="500">+ S/ 500</button>
+              </div>
+            </div>
 
-              <div class="form-group col-half">
-                <label for="categorySelect">Categoría</label>
-                <select id="categorySelect" class="form-select" required>
-                  <option value="Trabajo / Nomina">💼 Trabajo / Nómna</option>
-                  <option value="Vivienda">🏠 Vivienda</option>
-                  <option value="Servicios">⚡ Servicios Públicos</option>
-                  <option value="Alimentacion">🛒 Alimentación</option>
-                  <option value="Transporte">🚗 Transporte</option>
-                  <option value="Salud">🩺 Salud</option>
-                  <option value="Educacion">📚 Educación</option>
-                  <option value="Deudas / Tarjetas">💳 Deudas / Tarjetas</option>
-                  <option value="Entretenimiento">🎬 Ocio / Varios</option>
-                  <option value="Inversion">📈 Inversión / Ahorro</option>
-                  <option value="Otro">📦 Otro</option>
-                </select>
-              </div>
+            <!-- Categoría -->
+            <div class="form-group">
+              <label for="categorySelect">Categoría</label>
+              <select id="categorySelect" class="form-select" required>
+                <option value="Trabajo / Nomina">💼 Trabajo / Nómna</option>
+                <option value="Vivienda">🏠 Vivienda</option>
+                <option value="Servicios">⚡ Servicios Públicos</option>
+                <option value="Alimentacion" selected>🛒 Alimentación</option>
+                <option value="Transporte">🚗 Transporte</option>
+                <option value="Salud">🩺 Salud</option>
+                <option value="Educacion">📚 Educación</option>
+                <option value="Deudas / Tarjetas">💳 Deudas / Tarjetas</option>
+                <option value="Entretenimiento">🎬 Ocio / Varios</option>
+                <option value="Inversion">📈 Inversión / Ahorro</option>
+                <option value="Otro">📦 Otro</option>
+              </select>
             </div>
 
             <!-- Frecuencia & Fecha -->
@@ -304,13 +263,13 @@
               </div>
             </div>
 
-            <button type="submit" class="btn btn-primary btn-block">
+            <button type="submit" class="btn btn-primary btn-block btn-submit-hero">
               <i class="fa-solid fa-plus" aria-hidden="true"></i> Añadir Registro
             </button>
           </form>
         </section>
 
-        <!-- Column 2: Transactions List & Voucher Previews -->
+        <!-- Column 2: Transactions List -->
         <section class="card-floating list-card" aria-label="Lista de Movimientos">
           <div class="list-header">
             <div class="card-title">
@@ -345,7 +304,7 @@
 
     <!-- Footer -->
     <footer class="app-footer">
-      <p>Finanzas Tommy &copy; 2026 &bull; Fintech Dashboard 2.0 &bull; Ultra Optimizado</p>
+      <p>Finanzas Tommy &copy; 2026 &bull; Fintech Dashboard 3.0 &bull; Ultra Optimizado</p>
     </footer>
   </div>
 </body>

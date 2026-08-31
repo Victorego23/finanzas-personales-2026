@@ -1,7 +1,7 @@
 /**
- * Finanzas Tommy 2026 - Fintech Dashboard 2.0
- * Master Engine: Deep Peruvian OCR (Yape, Kashin, BCP, BBVA), Voucher Previews,
- * Due Date Reminders, Active Security Suite and Instant Multi-Device Performance.
+ * Finanzas Tommy 2026 - Fintech Dashboard 3.0
+ * Master Engine: Ultra-Fast Entry, Quick Amount Chips (+10, +50, +100, +500),
+ * Hero Master Balance Card, Active Security Suite and Instant Multi-Device Performance.
  */
 
 const STORAGE_KEY = 'FINANZAS_2026_DATA_V1';
@@ -93,7 +93,6 @@ class FinanceApp {
     this.savedPin = localStorage.getItem(PIN_KEY) || '';
     this.hideAmounts = localStorage.getItem(STEALTH_KEY) === 'true';
     this.inactivityTimer = null;
-    this.currentVoucherDataUrl = null;
     
     this.formatters = new Map();
     this.charts = { expenseChart: null, barChart: null };
@@ -152,24 +151,14 @@ class FinanceApp {
       currencySelect: document.getElementById('currencySelect'),
       searchInput: document.getElementById('searchInput'),
       filterPills: document.querySelectorAll('.filter-pills .pill'),
-      
-      // OCR & Security & Voucher Modal
-      ocrInput: document.getElementById('ocrInput'),
-      ocrStatus: document.getElementById('ocrStatus'),
-      ocrStatusText: document.getElementById('ocrStatusText'),
-      ocrChipsContainer: document.getElementById('ocrChipsContainer'),
-      ocrQuickAddBtn: document.getElementById('ocrQuickAddBtn'),
+      quickChipBtns: document.querySelectorAll('.quick-chip-btn'),
       
       pinOverlay: document.getElementById('pinOverlay'),
       pinToggleBtn: document.getElementById('pinToggleBtn'),
       pinBtnText: document.getElementById('pinBtnText'),
       pinDots: document.querySelectorAll('.pin-dots .dot'),
       hideAmountsBtn: document.getElementById('hideAmountsBtn'),
-      hideAmountsIcon: document.getElementById('hideAmountsIcon'),
-      
-      voucherModal: document.getElementById('voucherModal'),
-      voucherModalImg: document.getElementById('voucherModalImg'),
-      closeVoucherBtn: document.getElementById('closeVoucherBtn')
+      hideAmountsIcon: document.getElementById('hideAmountsIcon')
     };
 
     if (this.dom.currencySelect) {
@@ -312,188 +301,19 @@ class FinanceApp {
     }
   }
 
-  // --- DEEP PERUVIAN FINTECH OCR PARSER (YAPE, KASHIN, BCP, BBVA) ---
-  async handleOcrScan(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    this.showOcrStatus('⚡ Analizando comprobante en tu teléfono...', false);
-
-    try {
-      const fileName = file.name || 'comprobante.jpg';
-
-      // Compress and generate DataURL thumbnail to attach to transaction
-      this.currentVoucherDataUrl = await this.generateVoucherDataUrl(file);
-
-      this.processExtractedOcrText(fileName, fileName);
-    } catch (err) {
-      console.warn('Error leyendo imagen:', err);
-      this.showOcrStatus('✓ Imagen cargada. Completa el monto y confirma.', true);
-    } finally {
-      e.target.value = '';
-    }
-  }
-
-  generateVoucherDataUrl(file) {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const maxDim = 600;
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height) {
-            if (width > maxDim) {
-              height = Math.round((height * maxDim) / width);
-              width = maxDim;
-            }
-          } else {
-            if (height > maxDim) {
-              width = Math.round((width * maxDim) / height);
-              height = maxDim;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', 0.65));
-        };
-        img.onerror = () => resolve(null);
-        img.src = e.target.result;
-      };
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(file);
-    });
-  }
-
-  processExtractedOcrText(rawText, fileName) {
-    const text = (rawText + ' ' + fileName).toLowerCase();
-
-    let amount = null;
-    let type = 'expense';
-    let category = 'Otro';
-    let description = 'Comprobante / Captura';
-    let detectedDate = new Date().toISOString().split('T')[0];
-
-    const monthMap = {
-      ene: '01', enero: '01', feb: '02', febrero: '02', mar: '03', marzo: '03',
-      abr: '04', abril: '04', may: '05', mayo: '05', jun: '06', junio: '06',
-      jul: '07', julio: '07', ago: '08', agosto: '08', sep: '09', set: '09', septiembre: '09',
-      oct: '10', octubre: '10', nov: '11', noviembre: '11', dic: '12', diciembre: '12'
-    };
-
-    const dateRegex = /([0-3]?[0-9])\s*(?:de|\.|\/|-)?\s*([a-z]{3,10}|[0-1]?[0-9])\s*(?:de|\.|\/|-)?\s*(202[4-9])/i;
-    const dateMatch = text.match(dateRegex);
-    if (dateMatch) {
-      const day = dateMatch[1].padStart(2, '0');
-      const monthStr = dateMatch[2].toLowerCase();
-      const year = dateMatch[3];
-      const month = monthMap[monthStr] || monthStr.padStart(2, '0');
-      if (month && !isNaN(month)) {
-        detectedDate = `${year}-${month}-${day}`;
-      }
-    }
-
-    // Pattern 1: Yape
-    if (text.includes('yape') || text.includes('yapeaste') || text.includes('miguel grau')) {
-      type = text.includes('recibiste') || text.includes('yapearon') ? 'income' : 'expense';
-      category = type === 'income' ? 'Trabajo / Nomina' : 'Alimentacion';
-      description = 'Yape Movimiento';
-
-      const matchAmt = text.match(/(?:s\/?\.?|\$)\s*([0-9,.]+)/i);
-      if (matchAmt) amount = parseFloat(matchAmt[1].replace(',', '.'));
-    }
-    // Pattern 2: Kashin
-    else if (text.includes('kashin') || text.includes('cuota') || text.includes('préstamo') || text.includes('prestamo')) {
-      type = 'debt';
-      category = 'Deudas / Tarjetas';
-      description = 'Cuota Kashin / Préstamo';
-
-      const matchAmt = text.match(/(?:monto|cuota|s\/?\.?|\$)\s*:?\s*([0-9,.]+)/i);
-      if (matchAmt) amount = parseFloat(matchAmt[1].replace(',', '.'));
-    }
-    // Pattern 3: Bank Debt BCP/BBVA
-    else if (text.includes('deuda') || text.includes('crédito') || text.includes('credito') || text.includes('banco') || text.includes('bcp') || text.includes('bbva')) {
-      type = 'debt';
-      category = 'Deudas / Tarjetas';
-      description = 'Deuda Bancaria';
-
-      const matchAmt = text.match(/(?:deuda|total|s\/?\.?|\$)\s*:?\s*([0-9,.]+)/i);
-      if (matchAmt) amount = parseFloat(matchAmt[1].replace(',', '.'));
-    }
-    // Pattern 4: General fallback
-    else {
-      const matchAmt = text.match(/([0-9]+[.,][0-9]{2})/i);
-      if (matchAmt) amount = parseFloat(matchAmt[1].replace(',', '.'));
-
-      if (fileName && fileName.length > 3) {
-        const clean = fileName.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ").trim();
-        if (clean.length > 2) description = clean.slice(0, 30);
-      }
-    }
-
-    if (amount && !isNaN(amount) && amount > 0) {
-      this.dom.amountInput.value = amount;
-    }
-    this.dom.descriptionInput.value = description;
-    this.dom.categorySelect.value = category;
-    if (this.dom.dateInput) this.dom.dateInput.value = detectedDate;
-
-    const radioId = type === 'income' ? 'typeIncome' : (type === 'debt' ? 'typeDebt' : 'typeExpense');
-    const radioEl = document.getElementById(radioId);
-    if (radioEl) radioEl.checked = true;
-
-    if (this.dom.ocrQuickAddBtn) {
-      this.dom.ocrQuickAddBtn.classList.remove('hidden');
-    }
-
-    // Populate detected amount chips if found
-    if (this.dom.ocrChipsContainer) {
-      this.dom.ocrChipsContainer.innerHTML = '';
-      if (amount) {
-        const chip = document.createElement('button');
-        chip.type = 'button';
-        chip.className = 'ocr-chip';
-        chip.textContent = this.formatCurrency(amount);
-        chip.onclick = () => { this.dom.amountInput.value = amount; };
-        this.dom.ocrChipsContainer.appendChild(chip);
-      }
-    }
-
-    this.showOcrStatus(`⚡ ${type.toUpperCase()}: ${description}${amount ? ' (' + this.formatCurrency(amount) + ')' : ''}. ¡Revisa o presiona '⚡ Guardar de Frente'!`, true);
-  }
-
-  showOcrStatus(msg, isSuccess = false) {
-    if (!this.dom.ocrStatus || !this.dom.ocrStatusText) return;
-    this.dom.ocrStatusText.textContent = msg;
-    this.dom.ocrStatus.classList.remove('hidden');
-    if (isSuccess) {
-      this.dom.ocrStatus.classList.add('success');
-    } else {
-      this.dom.ocrStatus.classList.remove('success');
-    }
-  }
-
-  openVoucherModal(dataUrl) {
-    if (!this.dom.voucherModal || !this.dom.voucherModalImg) return;
-    this.dom.voucherModalImg.src = dataUrl;
-    this.dom.voucherModal.classList.remove('hidden');
-  }
-
-  closeVoucherModal() {
-    if (!this.dom.voucherModal) return;
-    this.dom.voucherModal.classList.add('hidden');
-  }
-
   initEventListeners() {
     if (this.dom.transactionForm) {
       this.dom.transactionForm.addEventListener('submit', (e) => this.handleFormSubmit(e));
     }
+
+    // Quick sum chips (+10, +50, +100, +500)
+    this.dom.quickChipBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const addValue = parseFloat(e.currentTarget.dataset.add) || 0;
+        const currentVal = parseFloat(this.dom.amountInput.value) || 0;
+        this.dom.amountInput.value = (currentVal + addValue).toFixed(2);
+      });
+    });
 
     if (this.dom.currencySelect) {
       this.dom.currencySelect.addEventListener('change', (e) => {
@@ -530,13 +350,6 @@ class FinanceApp {
         if (deleteBtn) {
           const id = deleteBtn.dataset.id;
           if (id) this.deleteTransaction(id);
-          return;
-        }
-
-        const voucherBtn = e.target.closest('.btn-voucher');
-        if (voucherBtn) {
-          const imgUrl = voucherBtn.dataset.img;
-          if (imgUrl) this.openVoucherModal(imgUrl);
         }
       });
     }
@@ -557,22 +370,6 @@ class FinanceApp {
 
     if (this.dom.pinToggleBtn) {
       this.dom.pinToggleBtn.addEventListener('click', () => this.togglePinSetup());
-    }
-
-    if (this.dom.ocrInput) {
-      this.dom.ocrInput.addEventListener('change', (e) => this.handleOcrScan(e));
-    }
-
-    if (this.dom.ocrQuickAddBtn) {
-      this.dom.ocrQuickAddBtn.addEventListener('click', () => {
-        if (this.dom.transactionForm) {
-          this.dom.transactionForm.requestSubmit();
-        }
-      });
-    }
-
-    if (this.dom.closeVoucherBtn) {
-      this.dom.closeVoucherBtn.addEventListener('click', () => this.closeVoucherModal());
     }
   }
 
@@ -605,8 +402,7 @@ class FinanceApp {
       amount,
       category,
       frequency,
-      date,
-      voucherImg: this.currentVoucherDataUrl || null
+      date
     };
 
     this.transactions.unshift(newTransaction);
@@ -615,9 +411,7 @@ class FinanceApp {
 
     this.dom.descriptionInput.value = '';
     this.dom.amountInput.value = '';
-    this.currentVoucherDataUrl = null;
     this.setDefaultDate();
-    if (this.dom.ocrStatus) this.dom.ocrStatus.classList.add('hidden');
     this.dom.descriptionInput.focus();
   }
 
@@ -695,13 +489,13 @@ class FinanceApp {
     
     if (metrics.netBalance > 0) {
       this.dom.balanceStatusText.textContent = 'Superávit saludable';
-      this.dom.balanceStatusText.style.color = 'var(--income-color)';
+      this.dom.balanceStatusText.style.color = '#34D399';
     } else if (metrics.netBalance < 0) {
       this.dom.balanceStatusText.textContent = 'Déficit presupuestal';
-      this.dom.balanceStatusText.style.color = 'var(--expense-color)';
+      this.dom.balanceStatusText.style.color = '#FB7185';
     } else {
       this.dom.balanceStatusText.textContent = 'Equilibrio exacto';
-      this.dom.balanceStatusText.style.color = 'var(--text-muted)';
+      this.dom.balanceStatusText.style.color = 'rgba(255,255,255,0.7)';
     }
 
     this.dom.healthRatio.textContent = `${metrics.savingsRatio}%`;
@@ -792,7 +586,6 @@ class FinanceApp {
 
     const query = this.searchQuery;
     const filter = this.activeFilter;
-    const todayStr = new Date().toISOString().split('T')[0];
 
     const filtered = this.transactions.filter(tx => {
       let matchesFilter = true;
@@ -825,21 +618,6 @@ class FinanceApp {
       const typeSign = tx.type === 'income' ? '+' : '-';
       const formattedAmount = this.formatCurrency(tx.amount);
 
-      // Due date reminder badge for debts
-      let dueBadgeHtml = '';
-      if (tx.type === 'debt' && tx.date) {
-        if (tx.date === todayStr) {
-          dueBadgeHtml = `<span class="badge-due danger">⚠️ Vence Hoy</span>`;
-        } else if (tx.date > todayStr) {
-          dueBadgeHtml = `<span class="badge-due warning">⏰ Vence: ${tx.date}</span>`;
-        }
-      }
-
-      // Voucher preview button if thumbnail exists
-      const voucherBtnHtml = tx.voucherImg 
-        ? `<button type="button" class="btn-voucher" data-img="${tx.voucherImg}" title="Ver constancia de comprobante"><i class="fa-solid fa-camera"></i> Váucher</button>`
-        : '';
-
       return `
         <div class="tx-item tx-${tx.type}">
           <div class="tx-left">
@@ -852,13 +630,11 @@ class FinanceApp {
                 <span class="badge-tag">${this.escapeHtml(tx.category)}</span>
                 <span>&bull; ${tx.frequency}</span>
                 <span>&bull; ${tx.date}</span>
-                ${dueBadgeHtml}
               </div>
             </div>
           </div>
 
           <div class="tx-right">
-            ${voucherBtnHtml}
             <span class="tx-amount">${typeSign} ${formattedAmount}</span>
             <button type="button" class="btn-delete" data-id="${tx.id}" title="Eliminar registro" aria-label="Eliminar ${this.escapeHtml(tx.description)}">
               <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
