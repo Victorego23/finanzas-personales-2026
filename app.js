@@ -8,6 +8,7 @@ const STORAGE_KEY = 'FINANZAS_2026_DATA_V1';
 const CURRENCY_KEY = 'FINANZAS_2026_CURRENCY';
 const PIN_KEY = 'FINANZAS_2026_PIN';
 const STEALTH_KEY = 'FINANZAS_2026_STEALTH';
+const DELETED_KEY = 'FINANZAS_2026_DELETED_IDS';
 
 const CATEGORY_ICONS = Object.freeze({
   'Deudas / Tarjetas': 'fa-credit-card',
@@ -23,63 +24,7 @@ const CATEGORY_ICONS = Object.freeze({
   'Otro': 'fa-layer-group'
 });
 
-const INITIAL_DEMO_DATA = Object.freeze([
-  {
-    id: 'demo-1',
-    type: 'income',
-    description: 'Salario Fijo Mensual 2026',
-    amount: 3800.00,
-    category: 'Trabajo / Nomina',
-    frequency: 'Fijo',
-    date: '2026-01-15',
-    currentCuota: null,
-    totalCuotas: null
-  },
-  {
-    id: 'demo-2',
-    type: 'income',
-    description: 'Proyecto Freelance Frontend',
-    amount: 1500.00,
-    category: 'Inversion',
-    frequency: 'Variable',
-    date: '2026-01-20',
-    currentCuota: null,
-    totalCuotas: null
-  },
-  {
-    id: 'demo-3',
-    type: 'debt',
-    description: 'Préstamo Kashin / Cuota 1',
-    amount: 1040.00,
-    category: 'Deudas / Tarjetas',
-    frequency: 'Fijo',
-    date: '2026-08-31',
-    currentCuota: 1,
-    totalCuotas: 3
-  },
-  {
-    id: 'demo-4',
-    type: 'debt',
-    description: 'Arriendo Vivienda',
-    amount: 1400.00,
-    category: 'Vivienda',
-    frequency: 'Fijo',
-    date: '2026-01-05',
-    currentCuota: null,
-    totalCuotas: null
-  },
-  {
-    id: 'demo-5',
-    type: 'debt',
-    description: 'Pago Préstamo BCP',
-    amount: 1455.27,
-    category: 'Deudas / Tarjetas',
-    frequency: 'Fijo',
-    date: '2026-08-30',
-    currentCuota: 2,
-    totalCuotas: 12
-  }
-]);
+const INITIAL_DEMO_DATA = Object.freeze([]);
 
 function debounce(func, wait = 150) {
   let timeout;
@@ -103,6 +48,7 @@ class FinanceApp {
     this.savedPin = localStorage.getItem(PIN_KEY) || '';
     this.hideAmounts = localStorage.getItem(STEALTH_KEY) === 'true';
     this.inactivityTimer = null;
+    this.deletedIds = new Set(JSON.parse(localStorage.getItem(DELETED_KEY) || '[]'));
     
     this.formatters = new Map();
     this.charts = { expenseChart: null, barChart: null };
@@ -270,10 +216,11 @@ class FinanceApp {
       if (resp.ok) {
         const remoteData = await resp.json();
         if (remoteData && Array.isArray(remoteData.transactions) && remoteData.transactions.length > 0) {
-          const remoteJson = JSON.stringify(remoteData.transactions);
+          const validRemoteTx = remoteData.transactions.filter(tx => !this.deletedIds.has(tx.id));
+          const remoteJson = JSON.stringify(validRemoteTx);
           const localJson = JSON.stringify(this.transactions);
           if (remoteJson !== localJson) {
-            this.transactions = remoteData.transactions;
+            this.transactions = validRemoteTx;
             localStorage.setItem(STORAGE_KEY, remoteJson);
             this.render();
           }
@@ -527,6 +474,8 @@ class FinanceApp {
 
   deleteTransaction(id) {
     if (confirm('¿Estás seguro de eliminar este registro?')) {
+      this.deletedIds.add(id);
+      try { localStorage.setItem(DELETED_KEY, JSON.stringify([...this.deletedIds])); } catch(e){}
       this.transactions = this.transactions.filter(tx => tx.id !== id);
       this.saveData();
       this.render();
