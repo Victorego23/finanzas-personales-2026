@@ -121,7 +121,7 @@ class FinanceApp {
     this.initSecuritySuite();
 
 
-    this.initCloudSync();
+    // this.initCloudSync(); -- Disabled per user request
 
     this.charts = { expenseChart: null, barChart: null };
 
@@ -501,7 +501,7 @@ class FinanceApp {
     if (code && code.trim()) {
       this.syncCode = code.trim();
       localStorage.setItem(SYNC_CODE_KEY, this.syncCode);
-      this.pushToCloud();
+      // this.pushToCloud(); -- Disabled per user request
       alert(`¡Código de Sincronización configurado a "${this.syncCode}"! Ingresa este mismo código en tu otro dispositivo.`);
     }
   }
@@ -673,7 +673,7 @@ class FinanceApp {
     if (this.dom.syncNowBtn) {
       this.dom.syncNowBtn.addEventListener('click', async () => {
         await this.pullFromCloud();
-        await this.pushToCloud();
+        await // this.pushToCloud(); -- Disabled per user request
         alert('¡Sincronización completada con la nube!');
       });
     }
@@ -763,7 +763,7 @@ class FinanceApp {
 
     this.transactions.unshift(newTransaction);
     this.saveData();
-    this.pushToCloud();
+    // this.pushToCloud(); -- Disabled per user request
     this.render();
 
     this.dom.descriptionInput.value = '';
@@ -776,7 +776,7 @@ class FinanceApp {
     if (confirm('¿Estás seguro de eliminar este registro?')) {
       this.transactions = this.transactions.filter(tx => tx.id !== id);
       this.saveData();
-    this.pushToCloud();
+    // this.pushToCloud(); -- Disabled per user request
       this.render();
     }
   }
@@ -956,7 +956,7 @@ class FinanceApp {
 
     this.budgets[category] = limit;
     this.saveData();
-    this.pushToCloud();
+    // this.pushToCloud(); -- Disabled per user request
     this.render();
   }
 
@@ -1018,7 +1018,7 @@ class FinanceApp {
     });
 
     this.saveData();
-    this.pushToCloud();
+    // this.pushToCloud(); -- Disabled per user request
     this.render();
   }
 
@@ -1031,7 +1031,7 @@ class FinanceApp {
 
     goal.current += amount;
     this.saveData();
-    this.pushToCloud();
+    // this.pushToCloud(); -- Disabled per user request
     this.render();
   }
 
@@ -1242,7 +1242,7 @@ class FinanceApp {
           if (imported.budgets) this.budgets = imported.budgets;
           if (imported.goals) this.goals = imported.goals;
           this.saveData();
-    this.pushToCloud();
+    // this.pushToCloud(); -- Disabled per user request
           this.render();
           alert('¡Respaldo importado con éxito!');
         } else {
@@ -1263,7 +1263,7 @@ class FinanceApp {
       this.budgets = {};
       this.goals = [];
       this.saveData();
-    this.pushToCloud();
+    // this.pushToCloud(); -- Disabled per user request
       this.render();
     }
   }
