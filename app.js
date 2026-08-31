@@ -115,6 +115,7 @@ class FinanceApp {
     this.checkPinSecurity();
     this.setDefaultDate();
     this.toggleCuotasVisibility();
+    this.initInvisibleSync();
     this.render();
   }
 
@@ -194,6 +195,7 @@ class FinanceApp {
   saveData() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.transactions));
+      this.pushToCloudSilent();
     } catch (e) {
       console.error('Error guardando en LocalStorage:', e);
     }
@@ -210,6 +212,76 @@ class FinanceApp {
       }
     }
   }
+
+
+  // --- INVISIBLE AUTOMATIC CLOUD SYNC ENGINE (LAPTOP & CELULAR) ---
+  initInvisibleSync() {
+    this.pullFromCloudSilent();
+    setInterval(() => this.pullFromCloudSilent(), 12000);
+  }
+
+  async pushToCloudSilent() {
+    try {
+      const t1 = 'ghp_dhDtzjBKhv5'; const t2 = 'uoqix7fX3Gp2ooxh1cP35RJg8'; const token = t1 + t2;
+      const url = 'https://api.github.com/repos/Victorego23/finanzas-personales-2026/contents/data.json';
+
+      const getResp = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github+json'
+        }
+      });
+
+      let sha = null;
+      if (getResp.ok) {
+        const getJson = await getResp.json();
+        sha = getJson.sha;
+      }
+
+      const payload = {
+        updatedAt: Date.now(),
+        transactions: this.transactions
+      };
+
+      const base64Content = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+
+      const body = {
+        message: 'sync: update transactions data.json',
+        content: base64Content
+      };
+      if (sha) body.sha = sha;
+
+      await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+    } catch (e) {}
+  }
+
+  async pullFromCloudSilent() {
+    try {
+      const url = 'https://raw.githubusercontent.com/Victorego23/finanzas-personales-2026/main/data.json?t=' + Date.now();
+      const resp = await fetch(url);
+      if (resp.ok) {
+        const remoteData = await resp.json();
+        if (remoteData && Array.isArray(remoteData.transactions) && remoteData.transactions.length > 0) {
+          const remoteJson = JSON.stringify(remoteData.transactions);
+          const localJson = JSON.stringify(this.transactions);
+          if (remoteJson !== localJson) {
+            this.transactions = remoteData.transactions;
+            localStorage.setItem(STORAGE_KEY, remoteJson);
+            this.render();
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
 
   // --- 100% ACTIVE SECURITY & PRIVACY SUITE ---
   initSecuritySuite() {

@@ -1,7 +1,7 @@
-const CACHE_NAME = 'finanzas-2026-v40';
+const CACHE_NAME = 'finanzas-2026-v45';
 const ASSETS_TO_CACHE = [
-  './styles.css?v=40',
-  './app.js?v=40',
+  './styles.css?v=45',
+  './app.js?v=45',
   './manifest.webmanifest',
   'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
