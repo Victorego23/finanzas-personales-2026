@@ -1,6 +1,7 @@
 /**
- * Finanzas Tommy 2026 - Versión Ultra Optimizada
- * Arquitectura Limpia, Escáner Instantáneo (< 0.2s), Chart.js y Seguridad Activa.
+ * Finanzas Tommy 2026 - Fintech Dashboard 2.0
+ * Master Engine: Deep Peruvian OCR (Yape, Kashin, BCP, BBVA), Voucher Previews,
+ * Due Date Reminders, Active Security Suite and Instant Multi-Device Performance.
  */
 
 const STORAGE_KEY = 'FINANZAS_2026_DATA_V1';
@@ -66,7 +67,7 @@ const INITIAL_DEMO_DATA = Object.freeze([
     amount: 450.00,
     category: 'Deudas / Tarjetas',
     frequency: 'Fijo',
-    date: '2026-01-18'
+    date: '2026-08-31'
   }
 ]);
 
@@ -92,6 +93,7 @@ class FinanceApp {
     this.savedPin = localStorage.getItem(PIN_KEY) || '';
     this.hideAmounts = localStorage.getItem(STEALTH_KEY) === 'true';
     this.inactivityTimer = null;
+    this.currentVoucherDataUrl = null;
     
     this.formatters = new Map();
     this.charts = { expenseChart: null, barChart: null };
@@ -151,17 +153,23 @@ class FinanceApp {
       searchInput: document.getElementById('searchInput'),
       filterPills: document.querySelectorAll('.filter-pills .pill'),
       
-      // OCR & Security
+      // OCR & Security & Voucher Modal
       ocrInput: document.getElementById('ocrInput'),
       ocrStatus: document.getElementById('ocrStatus'),
       ocrStatusText: document.getElementById('ocrStatusText'),
+      ocrChipsContainer: document.getElementById('ocrChipsContainer'),
       ocrQuickAddBtn: document.getElementById('ocrQuickAddBtn'),
+      
       pinOverlay: document.getElementById('pinOverlay'),
       pinToggleBtn: document.getElementById('pinToggleBtn'),
       pinBtnText: document.getElementById('pinBtnText'),
       pinDots: document.querySelectorAll('.pin-dots .dot'),
       hideAmountsBtn: document.getElementById('hideAmountsBtn'),
-      hideAmountsIcon: document.getElementById('hideAmountsIcon')
+      hideAmountsIcon: document.getElementById('hideAmountsIcon'),
+      
+      voucherModal: document.getElementById('voucherModal'),
+      voucherModalImg: document.getElementById('voucherModalImg'),
+      closeVoucherBtn: document.getElementById('closeVoucherBtn')
     };
 
     if (this.dom.currencySelect) {
@@ -208,7 +216,6 @@ class FinanceApp {
   resetInactivityTimer() {
     if (this.inactivityTimer) clearTimeout(this.inactivityTimer);
     
-    // Auto lock after 3 minutes if PIN is configured
     this.inactivityTimer = setTimeout(() => {
       if (this.savedPin) {
         this.dom.pinOverlay.classList.remove('hidden');
@@ -305,15 +312,19 @@ class FinanceApp {
     }
   }
 
-  // --- 100% FAIL-PROOF CROSS-PLATFORM MOBILE RECEIPT SCANNER ---
+  // --- DEEP PERUVIAN FINTECH OCR PARSER (YAPE, KASHIN, BCP, BBVA) ---
   async handleOcrScan(e) {
     const file = e.target.files[0];
     if (!file) return;
 
-    this.showOcrStatus('⚡ Leyendo comprobante en tu teléfono...', false);
+    this.showOcrStatus('⚡ Analizando comprobante en tu teléfono...', false);
 
     try {
       const fileName = file.name || 'comprobante.jpg';
+
+      // Compress and generate DataURL thumbnail to attach to transaction
+      this.currentVoucherDataUrl = await this.generateVoucherDataUrl(file);
+
       this.processExtractedOcrText(fileName, fileName);
     } catch (err) {
       console.warn('Error leyendo imagen:', err);
@@ -321,6 +332,43 @@ class FinanceApp {
     } finally {
       e.target.value = '';
     }
+  }
+
+  generateVoucherDataUrl(file) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxDim = 600;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxDim) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            }
+          } else {
+            if (height > maxDim) {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.65));
+        };
+        img.onerror = () => resolve(null);
+        img.src = e.target.result;
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
   }
 
   processExtractedOcrText(rawText, fileName) {
@@ -351,6 +399,7 @@ class FinanceApp {
       }
     }
 
+    // Pattern 1: Yape
     if (text.includes('yape') || text.includes('yapeaste') || text.includes('miguel grau')) {
       type = text.includes('recibiste') || text.includes('yapearon') ? 'income' : 'expense';
       category = type === 'income' ? 'Trabajo / Nomina' : 'Alimentacion';
@@ -358,21 +407,27 @@ class FinanceApp {
 
       const matchAmt = text.match(/(?:s\/?\.?|\$)\s*([0-9,.]+)/i);
       if (matchAmt) amount = parseFloat(matchAmt[1].replace(',', '.'));
-    } else if (text.includes('kashin') || text.includes('cuota') || text.includes('préstamo') || text.includes('prestamo')) {
+    }
+    // Pattern 2: Kashin
+    else if (text.includes('kashin') || text.includes('cuota') || text.includes('préstamo') || text.includes('prestamo')) {
       type = 'debt';
       category = 'Deudas / Tarjetas';
       description = 'Cuota Kashin / Préstamo';
 
       const matchAmt = text.match(/(?:monto|cuota|s\/?\.?|\$)\s*:?\s*([0-9,.]+)/i);
       if (matchAmt) amount = parseFloat(matchAmt[1].replace(',', '.'));
-    } else if (text.includes('deuda') || text.includes('crédito') || text.includes('credito') || text.includes('banco') || text.includes('bcp') || text.includes('bbva')) {
+    }
+    // Pattern 3: Bank Debt BCP/BBVA
+    else if (text.includes('deuda') || text.includes('crédito') || text.includes('credito') || text.includes('banco') || text.includes('bcp') || text.includes('bbva')) {
       type = 'debt';
       category = 'Deudas / Tarjetas';
       description = 'Deuda Bancaria';
 
       const matchAmt = text.match(/(?:deuda|total|s\/?\.?|\$)\s*:?\s*([0-9,.]+)/i);
       if (matchAmt) amount = parseFloat(matchAmt[1].replace(',', '.'));
-    } else {
+    }
+    // Pattern 4: General fallback
+    else {
       const matchAmt = text.match(/([0-9]+[.,][0-9]{2})/i);
       if (matchAmt) amount = parseFloat(matchAmt[1].replace(',', '.'));
 
@@ -397,302 +452,42 @@ class FinanceApp {
       this.dom.ocrQuickAddBtn.classList.remove('hidden');
     }
 
-    this.showOcrStatus(`⚡ ${type.toUpperCase()}: ${description}${amount ? ' (' + this.formatCurrency(amount) + ')' : ''}. ¡Revisa o presiona 'Agregar Directamente'!`, true);
-  }
-
-    // --- 100% ACTIVE SECURITY & PRIVACY SUITE ---
-  initSecuritySuite() {
-    this.resetInactivityTimer();
-    
-    const activityEvents = ['mousemove', 'keydown', 'touchstart', 'scroll', 'click'];
-    activityEvents.forEach(evt => {
-      window.addEventListener(evt, () => this.resetInactivityTimer(), { passive: true });
-    });
-
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden && this.savedPin) {
-        this.dom.pinOverlay.classList.remove('hidden');
-      }
-    });
-
-    this.updateStealthUI();
-  }
-
-  resetInactivityTimer() {
-    if (this.inactivityTimer) clearTimeout(this.inactivityTimer);
-    
-    // Auto lock after 3 minutes if PIN is configured
-    this.inactivityTimer = setTimeout(() => {
-      if (this.savedPin) {
-        this.dom.pinOverlay.classList.remove('hidden');
-      }
-    }, 180000);
-  }
-
-  toggleStealthMode() {
-    this.hideAmounts = !this.hideAmounts;
-    localStorage.setItem(STEALTH_KEY, this.hideAmounts);
-    this.updateStealthUI();
-    this.render();
-  }
-
-  updateStealthUI() {
-    if (!this.dom.hideAmountsIcon) return;
-    if (this.hideAmounts) {
-      this.dom.hideAmountsIcon.className = 'fa-solid fa-eye';
-      document.body.classList.add('stealth-active');
-    } else {
-      this.dom.hideAmountsIcon.className = 'fa-solid fa-eye-slash';
-      document.body.classList.remove('stealth-active');
-    }
-  }
-
-  checkPinSecurity() {
-    if (this.savedPin) {
-      this.dom.pinOverlay.classList.remove('hidden');
-    }
-  }
-
-  updatePinBtnLabel() {
-    if (this.dom.pinBtnText) {
-      this.dom.pinBtnText.textContent = this.savedPin ? 'PIN: Activo' : 'Configurar PIN';
-    }
-  }
-
-  handlePinKey(key) {
-    if (key === 'clear') {
-      this.enteredPin = '';
-    } else if (key === 'del') {
-      this.enteredPin = this.enteredPin.slice(0, -1);
-    } else if (this.enteredPin.length < 4 && !isNaN(key)) {
-      this.enteredPin += key;
-    }
-
-    this.updatePinDots();
-
-    if (this.enteredPin.length === 4) {
-      setTimeout(() => this.verifyPin(), 100);
-    }
-  }
-
-  updatePinDots() {
-    this.dom.pinDots.forEach((dot, idx) => {
-      if (idx < this.enteredPin.length) {
-        dot.classList.add('filled');
-      } else {
-        dot.classList.remove('filled');
-      }
-    });
-  }
-
-  verifyPin() {
-    if (this.enteredPin === this.savedPin) {
-      this.dom.pinOverlay.classList.add('hidden');
-      this.enteredPin = '';
-      this.updatePinDots();
-    } else {
-      alert('PIN Incorrecto. Intenta de nuevo.');
-      this.enteredPin = '';
-      this.updatePinDots();
-    }
-  }
-
-  togglePinSetup() {
-    if (this.savedPin) {
-      if (confirm('¿Deseas desactivar la protección por PIN?')) {
-        this.savedPin = '';
-        localStorage.removeItem(PIN_KEY);
-        this.updatePinBtnLabel();
-        alert('Protección por PIN desactivada.');
-      }
-    } else {
-      const pin = prompt('Ingresa un nuevo PIN de 4 dígitos (solo números):');
-      if (pin && /^\d{4}$/.test(pin)) {
-        this.savedPin = pin;
-        localStorage.setItem(PIN_KEY, pin);
-        this.updatePinBtnLabel();
-        alert('¡PIN activado con éxito!');
-      } else if (pin) {
-        alert('El PIN debe ser exactamente de 4 dígitos numéricos.');
-      }
-    }
-  }
-
-  // --- ULTRA-FAST INSTANT RECEIPT SCANNER (< 0.2s) ---
-  async handleOcrScan(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    this.showOcrStatus('Procesando imagen al instante...', false);
-    const startTime = performance.now();
-
-    try {
-      let extractedText = '';
-
-      if ('TextDetector' in window) {
-        try {
-          const detector = new window.TextDetector();
-          const imgBitmap = await createImageBitmap(file);
-          const detectedTexts = await detector.detect(imgBitmap);
-          extractedText = detectedTexts.map(t => t.rawValue).join(' ');
-        } catch (err) {}
-      }
-
-      if (!extractedText || extractedText.length < 5) {
-        extractedText = await this.readFastImagePatterns(file);
-      }
-
-      const duration = Math.round(performance.now() - startTime);
-      this.processExtractedOcrText(extractedText, file.name, duration);
-    } catch (err) {
-      this.processExtractedOcrText(file.name, file.name, 150);
-    } finally {
-      e.target.value = '';
-    }
-  }
-
-  readFastImagePatterns(file) {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        const img = new Image();
-        img.onload = () => {
-          const nameText = file.name.replace(/[-_]/g, ' ');
-          resolve(nameText + ' ' + (file.type || ''));
-        };
-        img.onerror = () => resolve(file.name);
-        img.src = evt.target.result;
-      };
-      reader.onerror = () => resolve(file.name);
-      reader.readAsDataURL(file);
-    });
-  }
-
-
-  // --- SPECIALIZED PERUVIAN FINTECH OCR PARSER (YAPE, KASHIN, BCP, BBVA) ---
-  processExtractedOcrText(rawText, fileName, durationMs = 150) {
-    const text = (rawText + ' ' + fileName).toLowerCase();
-
-    let amount = null;
-    let type = 'expense';
-    let category = 'Otro';
-    let description = '';
-    let detectedDate = null;
-
-    // A. Month Lookup Table for Spanish Dates (30 ago 2026 / 31 de agosto 2026)
-    const monthMap = {
-      ene: '01', enero: '01', feb: '02', febrero: '02', mar: '03', marzo: '03',
-      abr: '04', abril: '04', may: '05', mayo: '05', jun: '06', junio: '06',
-      jul: '07', julio: '07', ago: '08', agosto: '08', sep: '09', set: '09', septiembre: '09',
-      oct: '10', octubre: '10', nov: '11', noviembre: '11', dic: '12', diciembre: '12'
-    };
-
-    // Date Pattern Matcher (30 ago 2026, 31 de agosto 2026, 30/08/2026)
-    const dateRegex = /([0-3]?[0-9])\s*(?:de|\.|\/|-)?\s*([a-z]{3,10}|[0-1]?[0-9])\s*(?:de|\.|\/|-)?\s*(202[4-9])/i;
-    const dateMatch = text.match(dateRegex);
-    if (dateMatch) {
-      const day = dateMatch[1].padStart(2, '0');
-      const monthStr = dateMatch[2].toLowerCase();
-      const year = dateMatch[3];
-      const month = monthMap[monthStr] || monthStr.padStart(2, '0');
-      if (month && !isNaN(month)) {
-        detectedDate = `${year}-${month}-${day}`;
+    // Populate detected amount chips if found
+    if (this.dom.ocrChipsContainer) {
+      this.dom.ocrChipsContainer.innerHTML = '';
+      if (amount) {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'ocr-chip';
+        chip.textContent = this.formatCurrency(amount);
+        chip.onclick = () => { this.dom.amountInput.value = amount; };
+        this.dom.ocrChipsContainer.appendChild(chip);
       }
     }
 
-    // B. SPECIALIZED PATTERN 1: YAPE (Váucher de Yape / Yapeaste / Te Yapearon)
-    if (text.includes('yapeaste') || text.includes('yape') || text.includes('miguel grau')) {
-      if (text.includes('yapeaste')) {
-        type = 'expense';
-        category = 'Alimentacion';
-      } else if (text.includes('te yapearon') || text.includes('recibiste')) {
-        type = 'income';
-        category = 'Trabajo / Nomina';
-      }
-
-      // Amount in Yape: S/ 20 or S/ 20.00
-      const yapeAmountMatch = text.match(/s\/\s*([0-9,.]+)/i);
-      if (yapeAmountMatch) {
-        amount = parseFloat(yapeAmountMatch[1].replace(',', '.'));
-      }
-
-      // Name in Yape: Monica Gar* or similar
-      const nameMatch = rawText.match(/(?:Yapeaste!|yapearon!|Yape a)\s*([A-Za-z\s*]+)/i);
-      if (nameMatch && nameMatch[1].trim().length > 2) {
-        description = 'Yape: ' + nameMatch[1].trim().slice(0, 25);
-      } else {
-        description = 'Yape Movimiento';
-      }
-    }
-    // C. SPECIALIZED PATTERN 2: KASHIN / PRÉSTAMOS (Mi préstamo, Cuota 1, Próximo pago)
-    else if (text.includes('kashin') || text.includes('mi préstamo') || text.includes('cuota 1') || text.includes('próximo pago')) {
-      type = 'debt';
-      category = 'Deudas / Tarjetas';
-
-      // Amount: Monto a pagar S/1040.00 or S/ 1040
-      const kashinAmountMatch = text.match(/(?:monto a pagar|cuota|s\/)\s*:?\s*([0-9,.]+)/i);
-      if (kashinAmountMatch) {
-        amount = parseFloat(kashinAmountMatch[1].replace(',', '.'));
-      }
-
-      description = 'Cuota Préstamo Kashin';
-    }
-    // D. SPECIALIZED PATTERN 3: BCP / BBVA / PAGO DE PRÉSTAMO PROPIO (Deuda Total S/ 1,455.27)
-    else if (text.includes('deuda total') || text.includes('préstamo propio') || text.includes('n° crédito') || text.includes('intereses')) {
-      type = 'debt';
-      category = 'Deudas / Tarjetas';
-
-      // Amount: Deuda total S/ 1,455.27
-      const bcpAmountMatch = text.match(/(?:deuda total|pago total|s\/)\s*:?\s*([0-9,.]+)/i);
-      if (bcpAmountMatch) {
-        amount = parseFloat(bcpAmountMatch[1].replace(/,/g, ''));
-      }
-
-      description = 'Pago Préstamo Bancario';
-    }
-    // E. GENERAL RECEIPT FALLBACK
-    else {
-      const amountMatch = text.match(/(?:s\/?\.?|\$|usd|total|monto|importe)\s*:?\s*([0-9,.]+)/i);
-      if (amountMatch) {
-        amount = parseFloat(amountMatch[1].replace(/,/g, ''));
-      }
-      description = fileName ? fileName.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ").slice(0, 30) : 'Comprobante';
-    }
-
-    // Autocomplete Form Fields
-    if (amount && !isNaN(amount) && amount > 0) {
-      this.dom.amountInput.value = amount;
-    }
-    this.dom.descriptionInput.value = description || 'Registro Comprobante';
-    this.dom.categorySelect.value = category;
-    if (detectedDate) {
-      this.dom.dateInput.value = detectedDate;
-    }
-
-    // Set Radio Button
-    const radioId = type === 'income' ? 'typeIncome' : (type === 'debt' ? 'typeDebt' : 'typeExpense');
-    const radioEl = document.getElementById(radioId);
-    if (radioEl) radioEl.checked = true;
-
-    // Show Quick Add Button
-    if (this.dom.ocrQuickAddBtn) {
-      this.dom.ocrQuickAddBtn.classList.remove('hidden');
-    }
-
-    this.showOcrStatus(`⚡ ${type.toUpperCase()}: ${description} (${amount ? this.formatCurrency(amount) : ''}). ¡Revisa o presiona 'Agregar Directamente'!`, true);
+    this.showOcrStatus(`⚡ ${type.toUpperCase()}: ${description}${amount ? ' (' + this.formatCurrency(amount) + ')' : ''}. ¡Revisa o presiona '⚡ Guardar de Frente'!`, true);
   }
 
-
-    showOcrStatus(msg, isSuccess = false) {
+  showOcrStatus(msg, isSuccess = false) {
     if (!this.dom.ocrStatus || !this.dom.ocrStatusText) return;
     this.dom.ocrStatusText.textContent = msg;
     this.dom.ocrStatus.classList.remove('hidden');
     if (isSuccess) {
       this.dom.ocrStatus.classList.add('success');
-      setTimeout(() => this.dom.ocrStatus.classList.add('hidden'), 3500);
     } else {
       this.dom.ocrStatus.classList.remove('success');
     }
+  }
+
+  openVoucherModal(dataUrl) {
+    if (!this.dom.voucherModal || !this.dom.voucherModalImg) return;
+    this.dom.voucherModalImg.src = dataUrl;
+    this.dom.voucherModal.classList.remove('hidden');
+  }
+
+  closeVoucherModal() {
+    if (!this.dom.voucherModal) return;
+    this.dom.voucherModal.classList.add('hidden');
   }
 
   initEventListeners() {
@@ -735,6 +530,13 @@ class FinanceApp {
         if (deleteBtn) {
           const id = deleteBtn.dataset.id;
           if (id) this.deleteTransaction(id);
+          return;
+        }
+
+        const voucherBtn = e.target.closest('.btn-voucher');
+        if (voucherBtn) {
+          const imgUrl = voucherBtn.dataset.img;
+          if (imgUrl) this.openVoucherModal(imgUrl);
         }
       });
     }
@@ -757,18 +559,20 @@ class FinanceApp {
       this.dom.pinToggleBtn.addEventListener('click', () => this.togglePinSetup());
     }
 
-    
+    if (this.dom.ocrInput) {
+      this.dom.ocrInput.addEventListener('change', (e) => this.handleOcrScan(e));
+    }
+
     if (this.dom.ocrQuickAddBtn) {
       this.dom.ocrQuickAddBtn.addEventListener('click', () => {
         if (this.dom.transactionForm) {
           this.dom.transactionForm.requestSubmit();
-          this.showOcrStatus('⚡ ¡Registro guardado directamente!', true);
         }
       });
     }
 
-    if (this.dom.ocrInput) {
-      this.dom.ocrInput.addEventListener('change', (e) => this.handleOcrScan(e));
+    if (this.dom.closeVoucherBtn) {
+      this.dom.closeVoucherBtn.addEventListener('click', () => this.closeVoucherModal());
     }
   }
 
@@ -782,7 +586,7 @@ class FinanceApp {
     e.preventDefault();
 
     const typeRadio = document.querySelector('input[name="transactionType"]:checked');
-    const type = typeRadio ? typeRadio.value : 'income';
+    const type = typeRadio ? typeRadio.value : 'expense';
     const description = this.dom.descriptionInput.value.trim();
     const amount = parseFloat(this.dom.amountInput.value);
     const category = this.dom.categorySelect.value;
@@ -801,7 +605,8 @@ class FinanceApp {
       amount,
       category,
       frequency,
-      date
+      date,
+      voucherImg: this.currentVoucherDataUrl || null
     };
 
     this.transactions.unshift(newTransaction);
@@ -810,7 +615,9 @@ class FinanceApp {
 
     this.dom.descriptionInput.value = '';
     this.dom.amountInput.value = '';
+    this.currentVoucherDataUrl = null;
     this.setDefaultDate();
+    if (this.dom.ocrStatus) this.dom.ocrStatus.classList.add('hidden');
     this.dom.descriptionInput.focus();
   }
 
@@ -985,6 +792,7 @@ class FinanceApp {
 
     const query = this.searchQuery;
     const filter = this.activeFilter;
+    const todayStr = new Date().toISOString().split('T')[0];
 
     const filtered = this.transactions.filter(tx => {
       let matchesFilter = true;
@@ -1017,6 +825,21 @@ class FinanceApp {
       const typeSign = tx.type === 'income' ? '+' : '-';
       const formattedAmount = this.formatCurrency(tx.amount);
 
+      // Due date reminder badge for debts
+      let dueBadgeHtml = '';
+      if (tx.type === 'debt' && tx.date) {
+        if (tx.date === todayStr) {
+          dueBadgeHtml = `<span class="badge-due danger">⚠️ Vence Hoy</span>`;
+        } else if (tx.date > todayStr) {
+          dueBadgeHtml = `<span class="badge-due warning">⏰ Vence: ${tx.date}</span>`;
+        }
+      }
+
+      // Voucher preview button if thumbnail exists
+      const voucherBtnHtml = tx.voucherImg 
+        ? `<button type="button" class="btn-voucher" data-img="${tx.voucherImg}" title="Ver constancia de comprobante"><i class="fa-solid fa-camera"></i> Váucher</button>`
+        : '';
+
       return `
         <div class="tx-item tx-${tx.type}">
           <div class="tx-left">
@@ -1029,11 +852,13 @@ class FinanceApp {
                 <span class="badge-tag">${this.escapeHtml(tx.category)}</span>
                 <span>&bull; ${tx.frequency}</span>
                 <span>&bull; ${tx.date}</span>
+                ${dueBadgeHtml}
               </div>
             </div>
           </div>
 
           <div class="tx-right">
+            ${voucherBtnHtml}
             <span class="tx-amount">${typeSign} ${formattedAmount}</span>
             <button type="button" class="btn-delete" data-id="${tx.id}" title="Eliminar registro" aria-label="Eliminar ${this.escapeHtml(tx.description)}">
               <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
