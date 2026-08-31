@@ -11,6 +11,7 @@ const GOALS_KEY = 'FINANZAS_2026_GOALS';
 const PIN_KEY = 'FINANZAS_2026_PIN';
 const SYNC_CODE_KEY = 'FINANZAS_2026_SYNC_CODE';
 const CLOUD_BLOB_ID_KEY = 'FINANZAS_2026_BLOB_ID';
+const STEALTH_KEY = 'FINANZAS_2026_STEALTH';
 
 const CATEGORY_ICONS = Object.freeze({
   'Trabajo / Nomina': 'fa-briefcase',
@@ -115,6 +116,11 @@ class FinanceApp {
     this.cloudBlobId = localStorage.getItem(CLOUD_BLOB_ID_KEY) || '6d0a793a-8664-11ef-b124-0242ac110002';
     this.isSyncing = false;
 
+    this.hideAmounts = localStorage.getItem(STEALTH_KEY) === 'true';
+    this.inactivityTimer = null;
+    this.initSecuritySuite();
+
+
     this.initCloudSync();
 
     this.charts = { expenseChart: null, barChart: null };
@@ -196,6 +202,8 @@ class FinanceApp {
       syncNowBtn: document.getElementById('syncNowBtn'),
 
       pinToggleBtn: document.getElementById('pinToggleBtn'),
+      hideAmountsBtn: document.getElementById('hideAmountsBtn'),
+      hideAmountsIcon: document.getElementById('hideAmountsIcon'),
       pinBtnText: document.getElementById('pinBtnText'),
       pinDots: document.querySelectorAll('.pin-dots .dot'),
       setBudgetBtn: document.getElementById('setBudgetBtn'),
@@ -209,6 +217,57 @@ class FinanceApp {
   }
 
 
+
+
+  // --- 100% ACTIVE SECURITY & PRIVACY SUITE ---
+  initSecuritySuite() {
+    this.resetInactivityTimer();
+    
+    // User activity listeners to reset 3-minute auto-lock timer
+    const activityEvents = ['mousemove', 'keydown', 'touchstart', 'scroll', 'click'];
+    activityEvents.forEach(evt => {
+      window.addEventListener(evt, () => this.resetInactivityTimer(), { passive: true });
+    });
+
+    // Auto-lock immediately when switching tabs or minimizing app on mobile
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && this.savedPin) {
+        this.dom.pinOverlay.classList.remove('hidden');
+      }
+    });
+
+    this.updateStealthUI();
+  }
+
+  resetInactivityTimer() {
+    if (this.inactivityTimer) clearTimeout(this.inactivityTimer);
+    
+    // Auto lock after 3 minutes (180,000 ms) if PIN is configured
+    this.inactivityTimer = setTimeout(() => {
+      if (this.savedPin) {
+        this.dom.pinOverlay.classList.remove('hidden');
+        console.log('App auto-locked due to 3 minutes of inactivity');
+      }
+    }, 180000);
+  }
+
+  toggleStealthMode() {
+    this.hideAmounts = !this.hideAmounts;
+    localStorage.setItem(STEALTH_KEY, this.hideAmounts);
+    this.updateStealthUI();
+    this.render();
+  }
+
+  updateStealthUI() {
+    if (!this.dom.hideAmountsIcon) return;
+    if (this.hideAmounts) {
+      this.dom.hideAmountsIcon.className = 'fa-solid fa-eye';
+      document.body.classList.add('stealth-active');
+    } else {
+      this.dom.hideAmountsIcon.className = 'fa-solid fa-eye-slash';
+      document.body.classList.remove('stealth-active');
+    }
+  }
 
   // --- SMART OCR RECEIPT & VOUCHER SCANNER ---
   async handleOcrScan(e) {
@@ -396,6 +455,11 @@ class FinanceApp {
       this.updateCloudBadge('synced', 'Modo Offline');
     } finally {
       this.isSyncing = false;
+
+    this.hideAmounts = localStorage.getItem(STEALTH_KEY) === 'true';
+    this.inactivityTimer = null;
+    this.initSecuritySuite();
+
     }
   }
 
@@ -614,6 +678,11 @@ class FinanceApp {
       });
     }
 
+    
+    if (this.dom.hideAmountsBtn) {
+      this.dom.hideAmountsBtn.addEventListener('click', () => this.toggleStealthMode());
+    }
+
     if (this.dom.pinToggleBtn) {
       this.dom.pinToggleBtn.addEventListener('click', () => this.togglePinSetup());
     }
@@ -729,6 +798,7 @@ class FinanceApp {
       }));
     }
 
+    if (this.hideAmounts) return '••••••';
     return this.formatters.get(this.currentCurrency).format(value);
   }
 

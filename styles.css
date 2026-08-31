@@ -1005,3 +1005,10 @@ body {
   background: var(--income-bg);
   color: var(--income-color);
 }
+
+/* Active Security & Stealth Mode Styles */
+.stealth-active .kpi-value,
+.stealth-active .tx-amount {
+  letter-spacing: 0.1em;
+  font-family: monospace;
+}
