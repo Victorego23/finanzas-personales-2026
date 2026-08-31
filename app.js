@@ -1,6 +1,6 @@
 /**
- * Finanzas Tommy 2026 - Fintech Dashboard 3.0
- * Master Engine: Ultra-Fast Entry, Quick Amount Chips (+10, +50, +100, +500),
+ * Finanzas Tommy 2026 - Control de Ingresos & Deudas (2 Modos)
+ * Master Engine: Cuotas Tracker (Cuota X de Y), Quick Amount Chips (+10, +50, +100, +500),
  * Hero Master Balance Card, Active Security Suite and Instant Multi-Device Performance.
  */
 
@@ -10,6 +10,7 @@ const PIN_KEY = 'FINANZAS_2026_PIN';
 const STEALTH_KEY = 'FINANZAS_2026_STEALTH';
 
 const CATEGORY_ICONS = Object.freeze({
+  'Deudas / Tarjetas': 'fa-credit-card',
   'Trabajo / Nomina': 'fa-briefcase',
   'Vivienda': 'fa-house',
   'Servicios': 'fa-bolt',
@@ -17,7 +18,6 @@ const CATEGORY_ICONS = Object.freeze({
   'Transporte': 'fa-car',
   'Salud': 'fa-heart-pulse',
   'Educacion': 'fa-graduation-cap',
-  'Deudas / Tarjetas': 'fa-credit-card',
   'Entretenimiento': 'fa-film',
   'Inversion': 'fa-chart-line',
   'Otro': 'fa-layer-group'
@@ -31,7 +31,9 @@ const INITIAL_DEMO_DATA = Object.freeze([
     amount: 3800.00,
     category: 'Trabajo / Nomina',
     frequency: 'Fijo',
-    date: '2026-01-15'
+    date: '2026-01-15',
+    currentCuota: null,
+    totalCuotas: null
   },
   {
     id: 'demo-2',
@@ -40,34 +42,42 @@ const INITIAL_DEMO_DATA = Object.freeze([
     amount: 1500.00,
     category: 'Inversion',
     frequency: 'Variable',
-    date: '2026-01-20'
+    date: '2026-01-20',
+    currentCuota: null,
+    totalCuotas: null
   },
   {
     id: 'demo-3',
-    type: 'expense',
+    type: 'debt',
+    description: 'Préstamo Kashin / Cuota 1',
+    amount: 1040.00,
+    category: 'Deudas / Tarjetas',
+    frequency: 'Fijo',
+    date: '2026-08-31',
+    currentCuota: 1,
+    totalCuotas: 3
+  },
+  {
+    id: 'demo-4',
+    type: 'debt',
     description: 'Arriendo Vivienda',
     amount: 1400.00,
     category: 'Vivienda',
     frequency: 'Fijo',
-    date: '2026-01-05'
-  },
-  {
-    id: 'demo-4',
-    type: 'expense',
-    description: 'Servicios Públicos (Luz, Agua, Fibra)',
-    amount: 320.00,
-    category: 'Servicios',
-    frequency: 'Fijo',
-    date: '2026-01-10'
+    date: '2026-01-05',
+    currentCuota: null,
+    totalCuotas: null
   },
   {
     id: 'demo-5',
     type: 'debt',
-    description: 'Cuota Tarjeta de Crédito 2026',
-    amount: 450.00,
+    description: 'Pago Préstamo BCP',
+    amount: 1455.27,
     category: 'Deudas / Tarjetas',
     frequency: 'Fijo',
-    date: '2026-08-31'
+    date: '2026-08-30',
+    currentCuota: 2,
+    totalCuotas: 12
   }
 ]);
 
@@ -104,6 +114,7 @@ class FinanceApp {
     this.initSecuritySuite();
     this.checkPinSecurity();
     this.setDefaultDate();
+    this.toggleCuotasVisibility();
     this.render();
   }
 
@@ -147,6 +158,10 @@ class FinanceApp {
       frequencySelect: document.getElementById('frequencySelect'),
       dateInput: document.getElementById('dateInput'),
       
+      cuotasGroup: document.getElementById('cuotasGroup'),
+      currentCuotaInput: document.getElementById('currentCuotaInput'),
+      totalCuotasInput: document.getElementById('totalCuotasInput'),
+      
       transactionsList: document.getElementById('transactionsList'),
       currencySelect: document.getElementById('currencySelect'),
       searchInput: document.getElementById('searchInput'),
@@ -181,6 +196,18 @@ class FinanceApp {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.transactions));
     } catch (e) {
       console.error('Error guardando en LocalStorage:', e);
+    }
+  }
+
+  toggleCuotasVisibility() {
+    const typeRadio = document.querySelector('input[name="transactionType"]:checked');
+    const isDebt = typeRadio && typeRadio.value === 'debt';
+    if (this.dom.cuotasGroup) {
+      if (isDebt) {
+        this.dom.cuotasGroup.classList.remove('hidden');
+      } else {
+        this.dom.cuotasGroup.classList.add('hidden');
+      }
     }
   }
 
@@ -306,6 +333,12 @@ class FinanceApp {
       this.dom.transactionForm.addEventListener('submit', (e) => this.handleFormSubmit(e));
     }
 
+    // Toggle cuotas visibility when type changes
+    const typeRadios = document.querySelectorAll('input[name="transactionType"]');
+    typeRadios.forEach(radio => {
+      radio.addEventListener('change', () => this.toggleCuotasVisibility());
+    });
+
     // Quick sum chips (+10, +50, +100, +500)
     this.dom.quickChipBtns.forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -383,12 +416,15 @@ class FinanceApp {
     e.preventDefault();
 
     const typeRadio = document.querySelector('input[name="transactionType"]:checked');
-    const type = typeRadio ? typeRadio.value : 'expense';
+    const type = typeRadio ? typeRadio.value : 'debt';
     const description = this.dom.descriptionInput.value.trim();
     const amount = parseFloat(this.dom.amountInput.value);
     const category = this.dom.categorySelect.value;
     const frequency = this.dom.frequencySelect.value;
     const date = this.dom.dateInput.value || new Date().toISOString().split('T')[0];
+
+    const currentCuota = type === 'debt' && this.dom.currentCuotaInput.value ? parseInt(this.dom.currentCuotaInput.value) : null;
+    const totalCuotas = type === 'debt' && this.dom.totalCuotasInput.value ? parseInt(this.dom.totalCuotasInput.value) : null;
 
     if (!description || isNaN(amount) || amount <= 0) {
       alert('Por favor, ingresa una descripción válida y un monto mayor a 0.');
@@ -402,7 +438,9 @@ class FinanceApp {
       amount,
       category,
       frequency,
-      date
+      date,
+      currentCuota,
+      totalCuotas
     };
 
     this.transactions.unshift(newTransaction);
@@ -491,15 +529,15 @@ class FinanceApp {
       this.dom.balanceStatusText.textContent = 'Superávit saludable';
       this.dom.balanceStatusText.style.color = '#34D399';
     } else if (metrics.netBalance < 0) {
-      this.dom.balanceStatusText.textContent = 'Déficit presupuestal';
-      this.dom.balanceStatusText.style.color = '#FB7185';
+      this.dom.balanceStatusText.textContent = 'Deudas comprometen ingresos';
+      this.dom.balanceStatusText.style.color = '#FBBF24';
     } else {
       this.dom.balanceStatusText.textContent = 'Equilibrio exacto';
       this.dom.balanceStatusText.style.color = 'rgba(255,255,255,0.7)';
     }
 
     this.dom.healthRatio.textContent = `${metrics.savingsRatio}%`;
-    this.dom.progressPercentage.textContent = `${metrics.progressPercent}% comprometido`;
+    this.dom.progressPercentage.textContent = `${metrics.progressPercent}% en deudas`;
     this.dom.progressBarFill.style.width = `${metrics.progressPercent}%`;
 
     this.renderTransactions();
@@ -526,11 +564,11 @@ class FinanceApp {
       this.charts.expenseChart = new Chart(donutCtx, {
         type: 'doughnut',
         data: {
-          labels: categories.length ? categories : ['Sin Gastos'],
+          labels: categories.length ? categories : ['Sin Deudas'],
           datasets: [{
             data: categoryAmounts.length ? categoryAmounts : [1],
             backgroundColor: [
-              '#F43F5E', '#6366F1', '#F59E0B', '#10B981',
+              '#F59E0B', '#6366F1', '#10B981', '#F43F5E',
               '#8B5CF6', '#EC4899', '#3B82F6', '#14B8A6'
             ],
             borderWidth: 2,
@@ -557,11 +595,11 @@ class FinanceApp {
       this.charts.barChart = new Chart(barCtx, {
         type: 'bar',
         data: {
-          labels: ['Ingresos', 'Gastos / Deudas'],
+          labels: ['Ingresos', 'Deudas'],
           datasets: [{
             label: 'Monto Total',
             data: [metrics.totalIncome, metrics.totalExpenses],
-            backgroundColor: ['#10B981', '#F43F5E'],
+            backgroundColor: ['#10B981', '#F59E0B'],
             borderRadius: 8
           }]
         },
@@ -590,8 +628,7 @@ class FinanceApp {
     const filtered = this.transactions.filter(tx => {
       let matchesFilter = true;
       if (filter === 'income') matchesFilter = tx.type === 'income';
-      else if (filter === 'expense') matchesFilter = tx.type === 'expense';
-      else if (filter === 'debt') matchesFilter = tx.type === 'debt';
+      else if (filter === 'debt' || filter === 'expense') matchesFilter = tx.type === 'debt' || tx.type === 'expense';
       else if (filter === 'fixed') matchesFilter = tx.frequency === 'Fijo';
 
       let matchesSearch = true;
@@ -618,6 +655,19 @@ class FinanceApp {
       const typeSign = tx.type === 'income' ? '+' : '-';
       const formattedAmount = this.formatCurrency(tx.amount);
 
+      // Bank Cuotas Badge
+      let cuotasBadgeHtml = '';
+      if (tx.type === 'debt' && tx.totalCuotas && tx.totalCuotas > 1) {
+        const current = tx.currentCuota || 1;
+        const total = tx.totalCuotas;
+        const remaining = total - current;
+        if (remaining > 0) {
+          cuotasBadgeHtml = `<span class="badge-cuota">💳 Cuota ${current} de ${total} (Faltan ${remaining})</span>`;
+        } else {
+          cuotasBadgeHtml = `<span class="badge-cuota" style="background:rgba(16,185,129,0.15); color:#10B981; border-color:#10B981;">🎉 ¡Última Cuota! (${current} de ${total})</span>`;
+        }
+      }
+
       return `
         <div class="tx-item tx-${tx.type}">
           <div class="tx-left">
@@ -630,6 +680,7 @@ class FinanceApp {
                 <span class="badge-tag">${this.escapeHtml(tx.category)}</span>
                 <span>&bull; ${tx.frequency}</span>
                 <span>&bull; ${tx.date}</span>
+                ${cuotasBadgeHtml}
               </div>
             </div>
           </div>
