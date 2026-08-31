@@ -22,13 +22,13 @@ const CATEGORY_ICONS = {
   'Otro': 'fa-layer-group'
 };
 
-// Datos iniciales de demostración para el año 2026
+// Datos iniciales de demostración para el año 2026 (en Soles Peruanos - PEN S/)
 const INITIAL_DEMO_DATA = [
   {
     id: 'demo-1',
     type: 'income',
     description: 'Salario Fijo Mensual 2026',
-    amount: 3500000,
+    amount: 3800.00,
     category: 'Trabajo / Nomina',
     frequency: 'Fijo',
     date: '2026-01-15'
@@ -37,7 +37,7 @@ const INITIAL_DEMO_DATA = [
     id: 'demo-2',
     type: 'income',
     description: 'Proyecto Freelance Frontend',
-    amount: 1200000,
+    amount: 1500.00,
     category: 'Inversion',
     frequency: 'Variable',
     date: '2026-01-20'
@@ -46,7 +46,7 @@ const INITIAL_DEMO_DATA = [
     id: 'demo-3',
     type: 'expense',
     description: 'Arriendo Vivienda',
-    amount: 1400000,
+    amount: 1400.00,
     category: 'Vivienda',
     frequency: 'Fijo',
     date: '2026-01-05'
@@ -55,7 +55,7 @@ const INITIAL_DEMO_DATA = [
     id: 'demo-4',
     type: 'expense',
     description: 'Servicios Públicos (Luz, Agua, Fibra)',
-    amount: 380000,
+    amount: 320.00,
     category: 'Servicios',
     frequency: 'Fijo',
     date: '2026-01-10'
@@ -64,7 +64,7 @@ const INITIAL_DEMO_DATA = [
     id: 'demo-5',
     type: 'debt',
     description: 'Cuota Tarjeta de Crédito 2026',
-    amount: 450000,
+    amount: 450.00,
     category: 'Deudas / Tarjetas',
     frequency: 'Fijo',
     date: '2026-01-18'
@@ -74,7 +74,7 @@ const INITIAL_DEMO_DATA = [
 class FinanceApp {
   constructor() {
     this.transactions = [];
-    this.currentCurrency = localStorage.getItem(CURRENCY_KEY) || 'COP';
+    this.currentCurrency = localStorage.getItem(CURRENCY_KEY) || 'PEN';
     this.activeFilter = 'all';
     this.searchQuery = '';
 
@@ -245,13 +245,14 @@ class FinanceApp {
   // Formateador de moneda con Intl
   formatCurrency(value) {
     const currencyMap = {
-      COP: { locale: 'es-CO', currency: 'COP', decimals: 0 },
+      PEN: { locale: 'es-PE', currency: 'PEN', decimals: 2 },
       USD: { locale: 'en-US', currency: 'USD', decimals: 2 },
       EUR: { locale: 'de-DE', currency: 'EUR', decimals: 2 },
+      COP: { locale: 'es-CO', currency: 'COP', decimals: 0 },
       MXN: { locale: 'es-MX', currency: 'MXN', decimals: 2 }
     };
 
-    const config = currencyMap[this.currentCurrency] || currencyMap.COP;
+    const config = currencyMap[this.currentCurrency] || currencyMap.PEN;
 
     return new Intl.NumberFormat(config.locale, {
       style: 'currency',
