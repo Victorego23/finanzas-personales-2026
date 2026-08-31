@@ -150,6 +150,7 @@ class FinanceApp {
       ocrInput: document.getElementById('ocrInput'),
       ocrStatus: document.getElementById('ocrStatus'),
       ocrStatusText: document.getElementById('ocrStatusText'),
+      ocrQuickAddBtn: document.getElementById('ocrQuickAddBtn'),
       pinOverlay: document.getElementById('pinOverlay'),
       pinToggleBtn: document.getElementById('pinToggleBtn'),
       pinBtnText: document.getElementById('pinBtnText'),
@@ -349,72 +350,123 @@ class FinanceApp {
     });
   }
 
+
+  // --- SPECIALIZED PERUVIAN FINTECH OCR PARSER (YAPE, KASHIN, BCP, BBVA) ---
   processExtractedOcrText(rawText, fileName, durationMs = 150) {
     const text = (rawText + ' ' + fileName).toLowerCase();
 
     let amount = null;
-    const amountRegexes = [
-      /(?:s\/?\.?|\$|usd|total|monto|importe|precio|yape|plin)\s*:?\s*([0-9]+(?:[.,][0-9]{1,2})?)/gi,
-      /([0-9]+[.,][0-9]{2})/gi,
-      /(?:^|\D)([1-9][0-9]{1,4})(?:\D|$)/g
-    ];
-
-    for (const regex of amountRegexes) {
-      const matches = [...text.matchAll(regex)];
-      if (matches.length > 0) {
-        for (const match of matches) {
-          const val = parseFloat(match[1].replace(',', '.'));
-          if (!isNaN(val) && val > 0 && val < 50000) {
-            amount = val;
-            break;
-          }
-        }
-      }
-      if (amount) break;
-    }
-
     let type = 'expense';
-    if (text.includes('recibiste') || text.includes('yape recibido') || text.includes('transferencia recibida') || text.includes('abono') || text.includes('cobro') || text.includes('ingreso') || text.includes('pago a ti')) {
-      type = 'income';
-    } else if (text.includes('tarjeta') || text.includes('credito') || text.includes('prestamo') || text.includes('cuota') || text.includes('deuda') || text.includes('banco') || text.includes('bcp') || text.includes('bbva') || text.includes('interbank')) {
-      type = 'debt';
-    } else if (text.includes('yapeaste') || text.includes('compra') || text.includes('boleta') || text.includes('factura') || text.includes('pago') || text.includes('consumo') || text.includes('yape')) {
-      type = 'expense';
-    }
-
     let category = 'Otro';
-    if (text.includes('luz') || text.includes('agua') || text.includes('internet') || text.includes('movistar') || text.includes('claro') || text.includes('entel')) {
-      category = 'Servicios';
-    } else if (text.includes('vea') || text.includes('tottus') || text.includes('metro') || text.includes('wong') || text.includes('supermercado') || text.includes('kfc') || text.includes('starbucks') || text.includes('comida') || text.includes('restaurante')) {
-      category = 'Alimentacion';
-    } else if (text.includes('primax') || text.includes('pecsa') || text.includes('uber') || text.includes('taxi') || text.includes('gasolina')) {
-      category = 'Transporte';
-    } else if (text.includes('farmacia') || text.includes('inkafarma') || text.includes('mifarma') || text.includes('clinica') || text.includes('salud')) {
-      category = 'Salud';
-    } else if (type === 'debt' || text.includes('tarjeta') || text.includes('cuota')) {
+    let description = '';
+    let detectedDate = null;
+
+    // A. Month Lookup Table for Spanish Dates (30 ago 2026 / 31 de agosto 2026)
+    const monthMap = {
+      ene: '01', enero: '01', feb: '02', febrero: '02', mar: '03', marzo: '03',
+      abr: '04', abril: '04', may: '05', mayo: '05', jun: '06', junio: '06',
+      jul: '07', julio: '07', ago: '08', agosto: '08', sep: '09', set: '09', septiembre: '09',
+      oct: '10', octubre: '10', nov: '11', noviembre: '11', dic: '12', diciembre: '12'
+    };
+
+    // Date Pattern Matcher (30 ago 2026, 31 de agosto 2026, 30/08/2026)
+    const dateRegex = /([0-3]?[0-9])\s*(?:de|\.|\/|-)?\s*([a-z]{3,10}|[0-1]?[0-9])\s*(?:de|\.|\/|-)?\s*(202[4-9])/i;
+    const dateMatch = text.match(dateRegex);
+    if (dateMatch) {
+      const day = dateMatch[1].padStart(2, '0');
+      const monthStr = dateMatch[2].toLowerCase();
+      const year = dateMatch[3];
+      const month = monthMap[monthStr] || monthStr.padStart(2, '0');
+      if (month && !isNaN(month)) {
+        detectedDate = `${year}-${month}-${day}`;
+      }
+    }
+
+    // B. SPECIALIZED PATTERN 1: YAPE (Váucher de Yape / Yapeaste / Te Yapearon)
+    if (text.includes('yapeaste') || text.includes('yape') || text.includes('miguel grau')) {
+      if (text.includes('yapeaste')) {
+        type = 'expense';
+        category = 'Alimentacion';
+      } else if (text.includes('te yapearon') || text.includes('recibiste')) {
+        type = 'income';
+        category = 'Trabajo / Nomina';
+      }
+
+      // Amount in Yape: S/ 20 or S/ 20.00
+      const yapeAmountMatch = text.match(/s\/\s*([0-9,.]+)/i);
+      if (yapeAmountMatch) {
+        amount = parseFloat(yapeAmountMatch[1].replace(',', '.'));
+      }
+
+      // Name in Yape: Monica Gar* or similar
+      const nameMatch = rawText.match(/(?:Yapeaste!|yapearon!|Yape a)\s*
+*([A-Za-z\s*]+)/i);
+      if (nameMatch && nameMatch[1].trim().length > 2) {
+        description = 'Yape: ' + nameMatch[1].trim().slice(0, 25);
+      } else {
+        description = 'Yape Movimiento';
+      }
+    }
+    // C. SPECIALIZED PATTERN 2: KASHIN / PRÉSTAMOS (Mi préstamo, Cuota 1, Próximo pago)
+    else if (text.includes('kashin') || text.includes('mi préstamo') || text.includes('cuota 1') || text.includes('próximo pago')) {
+      type = 'debt';
       category = 'Deudas / Tarjetas';
-    } else if (type === 'income') {
-      category = 'Trabajo / Nomina';
+
+      // Amount: Monto a pagar S/1040.00 or S/ 1040
+      const kashinAmountMatch = text.match(/(?:monto a pagar|cuota|s\/)\s*:?\s*([0-9,.]+)/i);
+      if (kashinAmountMatch) {
+        amount = parseFloat(kashinAmountMatch[1].replace(',', '.'));
+      }
+
+      description = 'Cuota Préstamo Kashin';
+    }
+    // D. SPECIALIZED PATTERN 3: BCP / BBVA / PAGO DE PRÉSTAMO PROPIO (Deuda Total S/ 1,455.27)
+    else if (text.includes('deuda total') || text.includes('préstamo propio') || text.includes('n° crédito') || text.includes('intereses')) {
+      type = 'debt';
+      category = 'Deudas / Tarjetas';
+
+      // Amount: Deuda total S/ 1,455.27
+      const bcpAmountMatch = text.match(/(?:deuda total|pago total|s\/)\s*:?\s*([0-9,.]+)/i);
+      if (bcpAmountMatch) {
+        amount = parseFloat(bcpAmountMatch[1].replace(/,/g, ''));
+      }
+
+      description = 'Pago Préstamo Bancario';
+    }
+    // E. GENERAL RECEIPT FALLBACK
+    else {
+      const amountMatch = text.match(/(?:s\/?\.?|\$|usd|total|monto|importe)\s*:?\s*([0-9,.]+)/i);
+      if (amountMatch) {
+        amount = parseFloat(amountMatch[1].replace(/,/g, ''));
+      }
+      description = fileName ? fileName.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ").slice(0, 30) : 'Comprobante';
     }
 
-    let description = 'Comprobante / Captura';
-    if (fileName && fileName.length > 3) {
-      const cleanName = fileName.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ").trim();
-      if (cleanName.length > 2) description = cleanName.slice(0, 35);
+    // Autocomplete Form Fields
+    if (amount && !isNaN(amount) && amount > 0) {
+      this.dom.amountInput.value = amount;
     }
-
-    if (amount) this.dom.amountInput.value = amount;
-    this.dom.descriptionInput.value = description;
+    this.dom.descriptionInput.value = description || 'Registro Comprobante';
     this.dom.categorySelect.value = category;
+    if (detectedDate) {
+      this.dom.dateInput.value = detectedDate;
+    }
 
+    // Set Radio Button
     const radioId = type === 'income' ? 'typeIncome' : (type === 'debt' ? 'typeDebt' : 'typeExpense');
     const radioEl = document.getElementById(radioId);
     if (radioEl) radioEl.checked = true;
 
-    this.showOcrStatus(`⚡ ¡Comprobante leído en ${durationMs}ms! ${type.toUpperCase()}${amount ? ': ' + this.formatCurrency(amount) : ''}. ¡Revisa y confirma!`, true);
+    // Show Quick Add Button
+    if (this.dom.ocrQuickAddBtn) {
+      this.dom.ocrQuickAddBtn.classList.remove('hidden');
+    }
+
+    this.showOcrStatus(`⚡ ${type.toUpperCase()}: ${description} (${amount ? this.formatCurrency(amount) : ''}). ¡Revisa o presiona 'Agregar Directamente'!`, true);
   }
 
-  showOcrStatus(msg, isSuccess = false) {
+
+    showOcrStatus(msg, isSuccess = false) {
     if (!this.dom.ocrStatus || !this.dom.ocrStatusText) return;
     this.dom.ocrStatusText.textContent = msg;
     this.dom.ocrStatus.classList.remove('hidden');
@@ -486,6 +538,16 @@ class FinanceApp {
 
     if (this.dom.pinToggleBtn) {
       this.dom.pinToggleBtn.addEventListener('click', () => this.togglePinSetup());
+    }
+
+    
+    if (this.dom.ocrQuickAddBtn) {
+      this.dom.ocrQuickAddBtn.addEventListener('click', () => {
+        if (this.dom.transactionForm) {
+          this.dom.transactionForm.requestSubmit();
+          this.showOcrStatus('⚡ ¡Registro guardado directamente!', true);
+        }
+      });
     }
 
     if (this.dom.ocrInput) {
