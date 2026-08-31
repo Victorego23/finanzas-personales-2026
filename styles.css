@@ -931,3 +931,37 @@ body {
   padding-top: 1.5rem;
   border-top: 1px solid var(--border-color);
 }
+
+.badge-cloud {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid var(--accent-primary);
+  border-radius: var(--radius-full);
+  color: var(--accent-primary);
+  font-size: 0.775rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.badge-cloud:hover {
+  background: rgba(99, 102, 241, 0.25);
+}
+
+.badge-cloud.syncing {
+  color: var(--debt-color);
+  border-color: var(--debt-color);
+  background: var(--debt-bg);
+}
+
+.badge-cloud.syncing i {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

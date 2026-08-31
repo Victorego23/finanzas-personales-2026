@@ -9,6 +9,8 @@ const CURRENCY_KEY = 'FINANZAS_2026_CURRENCY';
 const BUDGETS_KEY = 'FINANZAS_2026_BUDGETS';
 const GOALS_KEY = 'FINANZAS_2026_GOALS';
 const PIN_KEY = 'FINANZAS_2026_PIN';
+const SYNC_CODE_KEY = 'FINANZAS_2026_SYNC_CODE';
+const CLOUD_BLOB_ID_KEY = 'FINANZAS_2026_BLOB_ID';
 
 const CATEGORY_ICONS = Object.freeze({
   'Trabajo / Nomina': 'fa-briefcase',
@@ -108,6 +110,12 @@ class FinanceApp {
     this.savedPin = localStorage.getItem(PIN_KEY) || '';
     
     this.formatters = new Map();
+    this.syncCode = localStorage.getItem(SYNC_CODE_KEY) || 'TOMMY-FINANZAS-2026';
+    this.cloudBlobId = localStorage.getItem(CLOUD_BLOB_ID_KEY) || '6d0a793a-8664-11ef-b124-0242ac110002';
+    this.isSyncing = false;
+
+    this.initCloudSync();
+
     this.charts = { expenseChart: null, barChart: null };
 
     this.registerServiceWorker();
@@ -176,6 +184,11 @@ class FinanceApp {
       
       // PIN
       pinOverlay: document.getElementById('pinOverlay'),
+
+      cloudStatusBadge: document.getElementById('cloudStatusBadge'),
+      cloudStatusText: document.getElementById('cloudStatusText'),
+      syncNowBtn: document.getElementById('syncNowBtn'),
+
       pinToggleBtn: document.getElementById('pinToggleBtn'),
       pinBtnText: document.getElementById('pinBtnText'),
       pinDots: document.querySelectorAll('.pin-dots .dot'),
@@ -187,6 +200,122 @@ class FinanceApp {
       this.dom.currencySelect.value = this.currentCurrency;
     }
     this.updatePinBtnLabel();
+  }
+
+
+  // --- CLOUD SYNC ENGINE (PC <-> MOBILE) ---
+  initCloudSync() {
+    this.pullFromCloud();
+    // Auto-sync every 25 seconds
+    setInterval(() => this.pullFromCloud(true), 25000);
+  }
+
+  updateCloudBadge(status, text) {
+    if (!this.dom.cloudStatusText || !this.dom.cloudStatusBadge) return;
+    this.dom.cloudStatusText.textContent = text;
+    if (status === 'syncing') {
+      this.dom.cloudStatusBadge.className = 'badge-cloud syncing';
+    } else {
+      this.dom.cloudStatusBadge.className = 'badge-cloud synced';
+    }
+  }
+
+  async pushToCloud() {
+    if (this.isSyncing) return;
+    this.isSyncing = true;
+    this.updateCloudBadge('syncing', 'Sincronizando...');
+
+    const payload = {
+      syncCode: this.syncCode,
+      updatedAt: new Date().toISOString(),
+      currency: this.currentCurrency,
+      transactions: this.transactions,
+      budgets: this.budgets,
+      goals: this.goals
+    };
+
+    try {
+      // Store in cloud using free JSON storage engine
+      const res = await fetch('https://jsonblob.com/api/jsonBlob/' + this.cloudBlobId, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        this.updateCloudBadge('synced', 'Nube Conectada');
+      } else {
+        // If blob doesn't exist, create a new blob
+        const createRes = await fetch('https://jsonblob.com/api/jsonBlob', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+        if (createRes.ok) {
+          const location = createRes.headers.get('Location');
+          if (location) {
+            const newId = location.split('/').pop();
+            this.cloudBlobId = newId;
+            localStorage.setItem(CLOUD_BLOB_ID_KEY, newId);
+          }
+          this.updateCloudBadge('synced', 'Nube Conectada');
+        }
+      }
+    } catch (e) {
+      console.warn('Error sincronizando con la nube:', e);
+      this.updateCloudBadge('synced', 'Modo Offline');
+    } finally {
+      this.isSyncing = false;
+    }
+  }
+
+  async pullFromCloud(silent = false) {
+    if (!silent) this.updateCloudBadge('syncing', 'Comprobando...');
+
+    try {
+      const res = await fetch('https://jsonblob.com/api/jsonBlob/' + this.cloudBlobId, {
+        headers: { 'Accept': 'application/json' }
+      });
+
+      if (res.ok) {
+        const remoteData = await res.json();
+        if (remoteData && Array.isArray(remoteData.transactions)) {
+          // Compare timestamp or total count to avoid unnecessary re-renders
+          const hasChanges = JSON.stringify(remoteData.transactions) !== JSON.stringify(this.transactions);
+          if (hasChanges) {
+            this.transactions = remoteData.transactions;
+            if (remoteData.budgets) this.budgets = remoteData.budgets;
+            if (remoteData.goals) this.goals = remoteData.goals;
+            if (remoteData.currency) this.currentCurrency = remoteData.currency;
+
+            // Save locally and re-render
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(this.transactions));
+            localStorage.setItem(BUDGETS_KEY, JSON.stringify(this.budgets));
+            localStorage.setItem(GOALS_KEY, JSON.stringify(this.goals));
+            this.render();
+          }
+        }
+        this.updateCloudBadge('synced', 'Nube Conectada');
+      }
+    } catch (e) {
+      if (!silent) this.updateCloudBadge('synced', 'Modo Offline');
+    }
+  }
+
+  promptCloudSyncCode() {
+    const code = prompt('Código de Sincronización Nube (usa el mismo en tu PC y Celular):', this.syncCode);
+    if (code && code.trim()) {
+      this.syncCode = code.trim();
+      localStorage.setItem(SYNC_CODE_KEY, this.syncCode);
+      this.pushToCloud();
+      alert(`¡Código de Sincronización configurado a "${this.syncCode}"! Ingresa este mismo código en tu otro dispositivo.`);
+    }
   }
 
   loadData() {
@@ -343,6 +472,19 @@ class FinanceApp {
       });
     }
 
+    
+    if (this.dom.cloudStatusBadge) {
+      this.dom.cloudStatusBadge.addEventListener('click', () => this.promptCloudSyncCode());
+    }
+
+    if (this.dom.syncNowBtn) {
+      this.dom.syncNowBtn.addEventListener('click', async () => {
+        await this.pullFromCloud();
+        await this.pushToCloud();
+        alert('¡Sincronización completada con la nube!');
+      });
+    }
+
     if (this.dom.pinToggleBtn) {
       this.dom.pinToggleBtn.addEventListener('click', () => this.togglePinSetup());
     }
@@ -423,6 +565,7 @@ class FinanceApp {
 
     this.transactions.unshift(newTransaction);
     this.saveData();
+    this.pushToCloud();
     this.render();
 
     this.dom.descriptionInput.value = '';
@@ -435,6 +578,7 @@ class FinanceApp {
     if (confirm('¿Estás seguro de eliminar este registro?')) {
       this.transactions = this.transactions.filter(tx => tx.id !== id);
       this.saveData();
+    this.pushToCloud();
       this.render();
     }
   }
@@ -613,6 +757,7 @@ class FinanceApp {
 
     this.budgets[category] = limit;
     this.saveData();
+    this.pushToCloud();
     this.render();
   }
 
@@ -674,6 +819,7 @@ class FinanceApp {
     });
 
     this.saveData();
+    this.pushToCloud();
     this.render();
   }
 
@@ -686,6 +832,7 @@ class FinanceApp {
 
     goal.current += amount;
     this.saveData();
+    this.pushToCloud();
     this.render();
   }
 
@@ -896,6 +1043,7 @@ class FinanceApp {
           if (imported.budgets) this.budgets = imported.budgets;
           if (imported.goals) this.goals = imported.goals;
           this.saveData();
+    this.pushToCloud();
           this.render();
           alert('¡Respaldo importado con éxito!');
         } else {
@@ -916,6 +1064,7 @@ class FinanceApp {
       this.budgets = {};
       this.goals = [];
       this.saveData();
+    this.pushToCloud();
       this.render();
     }
   }
