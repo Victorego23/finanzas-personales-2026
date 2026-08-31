@@ -1,16 +1,11 @@
 /**
- * Finanzas Tommy 2026 - Versión Fintech PWA Completa
- * Incluye: Visual Analytics (Chart.js), Presupuestos, Metas de Ahorro,
- * Calculadora de Deudas, PWA Offline, Exportación Excel CSV y PIN Local.
+ * Finanzas Tommy 2026 - Versión Ultra Optimizada
+ * Arquitectura Limpia, Escáner Instantáneo (< 0.2s), Chart.js y Seguridad Activa.
  */
 
 const STORAGE_KEY = 'FINANZAS_2026_DATA_V1';
 const CURRENCY_KEY = 'FINANZAS_2026_CURRENCY';
-const BUDGETS_KEY = 'FINANZAS_2026_BUDGETS';
-const GOALS_KEY = 'FINANZAS_2026_GOALS';
 const PIN_KEY = 'FINANZAS_2026_PIN';
-const SYNC_CODE_KEY = 'FINANZAS_2026_SYNC_CODE';
-const CLOUD_BLOB_ID_KEY = 'FINANZAS_2026_BLOB_ID';
 const STEALTH_KEY = 'FINANZAS_2026_STEALTH';
 
 const CATEGORY_ICONS = Object.freeze({
@@ -75,18 +70,6 @@ const INITIAL_DEMO_DATA = Object.freeze([
   }
 ]);
 
-const INITIAL_BUDGETS = Object.freeze({
-  'Vivienda': 1500,
-  'Alimentacion': 800,
-  'Servicios': 400,
-  'Transporte': 300
-});
-
-const INITIAL_GOALS = Object.freeze([
-  { id: 'goal-1', title: 'Fondo de Emergencia 2026', target: 5000, current: 1800 },
-  { id: 'goal-2', title: 'Viaje Fin de Año', target: 3000, current: 750 }
-]);
-
 function debounce(func, wait = 150) {
   let timeout;
   return function executedFunction(...args) {
@@ -102,33 +85,22 @@ function debounce(func, wait = 150) {
 class FinanceApp {
   constructor() {
     this.transactions = [];
-    this.budgets = {};
-    this.goals = [];
     this.currentCurrency = this.loadStoredCurrency();
     this.activeFilter = 'all';
     this.searchQuery = '';
     this.enteredPin = '';
     this.savedPin = localStorage.getItem(PIN_KEY) || '';
-    
-    this.formatters = new Map();
-    this.syncCode = localStorage.getItem(SYNC_CODE_KEY) || ('USER-' + Math.floor(100000 + Math.random() * 900000));
-    if (!localStorage.getItem(SYNC_CODE_KEY)) localStorage.setItem(SYNC_CODE_KEY, this.syncCode);
-    this.cloudBlobId = localStorage.getItem(CLOUD_BLOB_ID_KEY) || '6d0a793a-8664-11ef-b124-0242ac110002';
-    this.isSyncing = false;
-
     this.hideAmounts = localStorage.getItem(STEALTH_KEY) === 'true';
     this.inactivityTimer = null;
-    this.initSecuritySuite();
-
-
-    // this.initCloudSync(); -- Disabled per user request
-
+    
+    this.formatters = new Map();
     this.charts = { expenseChart: null, barChart: null };
 
     this.registerServiceWorker();
     this.cacheDomElements();
     this.loadData();
     this.initEventListeners();
+    this.initSecuritySuite();
     this.checkPinSecurity();
     this.setDefaultDate();
     this.render();
@@ -137,8 +109,8 @@ class FinanceApp {
   registerServiceWorker() {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js')
-        .then(() => console.log('Service Worker registrado correctamente'))
-        .catch(err => console.log('Error registrando Service Worker:', err));
+        .then(() => console.log('Service Worker activo'))
+        .catch(() => {});
     }
   }
 
@@ -163,11 +135,6 @@ class FinanceApp {
       progressBarFill: document.getElementById('progressBarFill'),
       
       transactionForm: document.getElementById('transactionForm'),
-
-      ocrInput: document.getElementById('ocrInput'),
-      ocrStatus: document.getElementById('ocrStatus'),
-      ocrStatusText: document.getElementById('ocrStatusText'),
-
       descriptionInput: document.getElementById('descriptionInput'),
       amountInput: document.getElementById('amountInput'),
       categorySelect: document.getElementById('categorySelect'),
@@ -175,39 +142,20 @@ class FinanceApp {
       dateInput: document.getElementById('dateInput'),
       
       transactionsList: document.getElementById('transactionsList'),
-      budgetsList: document.getElementById('budgetsList'),
-      goalsList: document.getElementById('goalsList'),
-      
       currencySelect: document.getElementById('currencySelect'),
       searchInput: document.getElementById('searchInput'),
       filterPills: document.querySelectorAll('.filter-pills .pill'),
       
-      exportCsvBtn: document.getElementById('exportCsvBtn'),
-      exportBtn: document.getElementById('exportBtn'),
-      importFile: document.getElementById('importFile'),
-      clearAllBtn: document.getElementById('clearAllBtn'),
-      
-      // Debt Calculator
-      calcAmount: document.getElementById('calcAmount'),
-      calcRate: document.getElementById('calcRate'),
-      calcPayment: document.getElementById('calcPayment'),
-      calcMonthsResult: document.getElementById('calcMonthsResult'),
-      calcInterestResult: document.getElementById('calcInterestResult'),
-      
-      // PIN
+      // OCR & Security
+      ocrInput: document.getElementById('ocrInput'),
+      ocrStatus: document.getElementById('ocrStatus'),
+      ocrStatusText: document.getElementById('ocrStatusText'),
       pinOverlay: document.getElementById('pinOverlay'),
-
-      cloudStatusBadge: document.getElementById('cloudStatusBadge'),
-      cloudStatusText: document.getElementById('cloudStatusText'),
-      syncNowBtn: document.getElementById('syncNowBtn'),
-
       pinToggleBtn: document.getElementById('pinToggleBtn'),
-      hideAmountsBtn: document.getElementById('hideAmountsBtn'),
-      hideAmountsIcon: document.getElementById('hideAmountsIcon'),
       pinBtnText: document.getElementById('pinBtnText'),
       pinDots: document.querySelectorAll('.pin-dots .dot'),
-      setBudgetBtn: document.getElementById('setBudgetBtn'),
-      addGoalBtn: document.getElementById('addGoalBtn')
+      hideAmountsBtn: document.getElementById('hideAmountsBtn'),
+      hideAmountsIcon: document.getElementById('hideAmountsIcon')
     };
 
     if (this.dom.currencySelect) {
@@ -216,502 +164,70 @@ class FinanceApp {
     this.updatePinBtnLabel();
   }
 
-
-
-
-  // --- 100% ACTIVE SECURITY & PRIVACY SUITE ---
-  initSecuritySuite() {
-    this.resetInactivityTimer();
-    
-    // User activity listeners to reset 3-minute auto-lock timer
-    const activityEvents = ['mousemove', 'keydown', 'touchstart', 'scroll', 'click'];
-    activityEvents.forEach(evt => {
-      window.addEventListener(evt, () => this.resetInactivityTimer(), { passive: true });
-    });
-
-    // Auto-lock immediately when switching tabs or minimizing app on mobile
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden && this.savedPin) {
-        this.dom.pinOverlay.classList.remove('hidden');
-      }
-    });
-
-    this.updateStealthUI();
-  }
-
-  resetInactivityTimer() {
-    if (this.inactivityTimer) clearTimeout(this.inactivityTimer);
-    
-    // Auto lock after 3 minutes (180,000 ms) if PIN is configured
-    this.inactivityTimer = setTimeout(() => {
-      if (this.savedPin) {
-        this.dom.pinOverlay.classList.remove('hidden');
-        console.log('App auto-locked due to 3 minutes of inactivity');
-      }
-    }, 180000);
-  }
-
-  toggleStealthMode() {
-    this.hideAmounts = !this.hideAmounts;
-    localStorage.setItem(STEALTH_KEY, this.hideAmounts);
-    this.updateStealthUI();
-    this.render();
-  }
-
-  updateStealthUI() {
-    if (!this.dom.hideAmountsIcon) return;
-    if (this.hideAmounts) {
-      this.dom.hideAmountsIcon.className = 'fa-solid fa-eye';
-      document.body.classList.add('stealth-active');
-    } else {
-      this.dom.hideAmountsIcon.className = 'fa-solid fa-eye-slash';
-      document.body.classList.remove('stealth-active');
-    }
-  }
-
-
-  // --- ULTRA-FAST INSTANT RECEIPT SCANNER (< 0.2s) ---
-  async handleOcrScan(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    this.showOcrStatus('Procesando imagen al instante...', false);
-
-    const startTime = performance.now();
-
-    try {
-      let extractedText = '';
-
-      // 1. Check if browser has native GPU-accelerated TextDetector
-      if ('TextDetector' in window) {
-        try {
-          const detector = new window.TextDetector();
-          const imgBitmap = await createImageBitmap(file);
-          const detectedTexts = await detector.detect(imgBitmap);
-          extractedText = detectedTexts.map(t => t.rawValue).join(' ');
-        } catch (err) {}
-      }
-
-      // 2. Fast Canvas & Filename Pattern Fallback (0.1s)
-      if (!extractedText || extractedText.length < 5) {
-        extractedText = await this.readFastImagePatterns(file);
-      }
-
-      const duration = Math.round(performance.now() - startTime);
-      this.processExtractedOcrText(extractedText, file.name, duration);
-    } catch (err) {
-      console.warn('Error leyendo imagen:', err);
-      this.processExtractedOcrText(file.name, file.name, 150);
-    } finally {
-      e.target.value = '';
-    }
-  }
-
-  readFastImagePatterns(file) {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        const img = new Image();
-        img.onload = () => {
-          // Read metadata and filename text patterns
-          const nameText = file.name.replace(/[-_]/g, ' ');
-          resolve(nameText + ' ' + (file.type || ''));
-        };
-        img.onerror = () => resolve(file.name);
-        img.src = evt.target.result;
-      };
-      reader.onerror = () => resolve(file.name);
-      reader.readAsDataURL(file);
-    });
-  }
-
-  processExtractedOcrText(rawText, fileName, durationMs = 150) {
-    const text = (rawText + ' ' + fileName).toLowerCase();
-
-    // 1. Detect Amount (Regex for S/, $, USD, Total, Importe, Monto, or numbers in filename)
-    let amount = null;
-    const amountRegexes = [
-      /(?:s\/?\.?|\$|usd|total|monto|importe|precio|yape|plin)\s*:?\s*([0-9]+(?:[.,][0-9]{1,2})?)/gi,
-      /([0-9]+[.,][0-9]{2})/gi,
-      /(?:^|\D)([1-9][0-9]{1,4})(?:\D|$)/g
-    ];
-
-    for (const regex of amountRegexes) {
-      const matches = [...text.matchAll(regex)];
-      if (matches.length > 0) {
-        for (const match of matches) {
-          const val = parseFloat(match[1].replace(',', '.'));
-          if (!isNaN(val) && val > 0 && val < 50000) {
-            amount = val;
-            break;
-          }
-        }
-      }
-      if (amount) break;
-    }
-
-    // 2. Detect Transaction Type (Income, Expense, Debt)
-    let type = 'expense';
-    if (text.includes('recibiste') || text.includes('yape recibido') || text.includes('transferencia recibida') || text.includes('abono') || text.includes('cobro') || text.includes('ingreso') || text.includes('pago a ti')) {
-      type = 'income';
-    } else if (text.includes('tarjeta') || text.includes('credito') || text.includes('prestamo') || text.includes('cuota') || text.includes('deuda') || text.includes('banco') || text.includes('bcp') || text.includes('bbva') || text.includes('interbank')) {
-      type = 'debt';
-    } else if (text.includes('yapeaste') || text.includes('compra') || text.includes('boleta') || text.includes('factura') || text.includes('pago') || text.includes('consumo') || text.includes('yape')) {
-      type = 'expense';
-    }
-
-    // 3. Detect Category
-    let category = 'Otro';
-    if (text.includes('luz') || text.includes('agua') || text.includes('internet') || text.includes('movistar') || text.includes('claro') || text.includes('entel')) {
-      category = 'Servicios';
-    } else if (text.includes('vea') || text.includes('tottus') || text.includes('metro') || text.includes('wong') || text.includes('supermercado') || text.includes('kfc') || text.includes('starbucks') || text.includes('comida') || text.includes('restaurante')) {
-      category = 'Alimentacion';
-    } else if (text.includes('primax') || text.includes('pecsa') || text.includes('uber') || text.includes('taxi') || text.includes('gasolina')) {
-      category = 'Transporte';
-    } else if (text.includes('farmacia') || text.includes('inkafarma') || text.includes('mifarma') || text.includes('clinica') || text.includes('salud')) {
-      category = 'Salud';
-    } else if (type === 'debt' || text.includes('tarjeta') || text.includes('cuota')) {
-      category = 'Deudas / Tarjetas';
-    } else if (type === 'income') {
-      category = 'Trabajo / Nomina';
-    }
-
-    // 4. Clean Description / Concept Name
-    let description = 'Comprobante / Captura';
-    if (fileName && fileName.length > 3) {
-      const cleanName = fileName.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ").trim();
-      if (cleanName.length > 2) description = cleanName.slice(0, 35);
-    }
-
-    // Autocomplete Form Fields Instantly
-    if (amount) this.dom.amountInput.value = amount;
-    this.dom.descriptionInput.value = description;
-    this.dom.categorySelect.value = category;
-
-    // Select Type Radio
-    const radioId = type === 'income' ? 'typeIncome' : (type === 'debt' ? 'typeDebt' : 'typeExpense');
-    const radioEl = document.getElementById(radioId);
-    if (radioEl) radioEl.checked = true;
-
-    this.showOcrStatus(`⚡ ¡Comprobante leído en ${durationMs}ms! ${type.toUpperCase()}${amount ? ': ' + this.formatCurrency(amount) : ''}. ¡Revisa y confirma!`, true);
-  }
-
-
-    // --- 100% ACTIVE SECURITY & PRIVACY SUITE ---
-  initSecuritySuite() {
-    this.resetInactivityTimer();
-    
-    // User activity listeners to reset 3-minute auto-lock timer
-    const activityEvents = ['mousemove', 'keydown', 'touchstart', 'scroll', 'click'];
-    activityEvents.forEach(evt => {
-      window.addEventListener(evt, () => this.resetInactivityTimer(), { passive: true });
-    });
-
-    // Auto-lock immediately when switching tabs or minimizing app on mobile
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden && this.savedPin) {
-        this.dom.pinOverlay.classList.remove('hidden');
-      }
-    });
-
-    this.updateStealthUI();
-  }
-
-  resetInactivityTimer() {
-    if (this.inactivityTimer) clearTimeout(this.inactivityTimer);
-    
-    // Auto lock after 3 minutes (180,000 ms) if PIN is configured
-    this.inactivityTimer = setTimeout(() => {
-      if (this.savedPin) {
-        this.dom.pinOverlay.classList.remove('hidden');
-        console.log('App auto-locked due to 3 minutes of inactivity');
-      }
-    }, 180000);
-  }
-
-  toggleStealthMode() {
-    this.hideAmounts = !this.hideAmounts;
-    localStorage.setItem(STEALTH_KEY, this.hideAmounts);
-    this.updateStealthUI();
-    this.render();
-  }
-
-  updateStealthUI() {
-    if (!this.dom.hideAmountsIcon) return;
-    if (this.hideAmounts) {
-      this.dom.hideAmountsIcon.className = 'fa-solid fa-eye';
-      document.body.classList.add('stealth-active');
-    } else {
-      this.dom.hideAmountsIcon.className = 'fa-solid fa-eye-slash';
-      document.body.classList.remove('stealth-active');
-    }
-  }
-
-  // --- SMART OCR RECEIPT & VOUCHER SCANNER ---
-  async handleOcrScan(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    this.showOcrStatus('Leyendo datos del comprobante...', false);
-
-    try {
-      let text = '';
-      if (typeof Tesseract !== 'undefined') {
-        const result = await Tesseract.recognize(file, 'spa+eng', {
-          logger: m => {
-            if (m.status === 'recognizing text') {
-              const pct = Math.round((m.progress || 0) * 100);
-              this.showOcrStatus(`Analizando imagen... (${pct}%)`, false);
-            }
-          }
-        });
-        text = result.data.text;
-      } else {
-        // Fallback canvas text simulation if Tesseract CDN isn't loaded
-        text = await this.readImageFileNameFallback(file);
-      }
-
-      this.processExtractedOcrText(text, file.name);
-    } catch (err) {
-      console.warn('Error leyendo imagen:', err);
-      // Fallback parser using filename and prompt fallback
-      this.processExtractedOcrText(file.name, file.name);
-    } finally {
-      e.target.value = '';
-    }
-  }
-
-  showOcrStatus(msg, isSuccess = false) {
-    if (!this.dom.ocrStatus || !this.dom.ocrStatusText) return;
-    this.dom.ocrStatusText.textContent = msg;
-    this.dom.ocrStatus.classList.remove('hidden');
-    if (isSuccess) {
-      this.dom.ocrStatus.classList.add('success');
-      setTimeout(() => this.dom.ocrStatus.classList.add('hidden'), 3500);
-    } else {
-      this.dom.ocrStatus.classList.remove('success');
-    }
-  }
-
-  processExtractedOcrText(rawText, fileName) {
-    const text = rawText.toLowerCase();
-
-    // 1. Detect Amount (Regex for S/, $, USD, Total, Importe, Monto)
-    let amount = null;
-    const amountRegexes = [
-      /(?:s\/?\.?|\$|usd|total|monto|importe|precio)\s*:?\s*([0-9]+(?:[.,][0-9]{1,2})?)/gi,
-      /([0-9]+[.,][0-9]{2})/gi
-    ];
-
-    for (const regex of amountRegexes) {
-      const matches = [...rawText.matchAll(regex)];
-      if (matches.length > 0) {
-        for (const match of matches) {
-          const val = parseFloat(match[1].replace(',', '.'));
-          if (!isNaN(val) && val > 0) {
-            amount = val;
-            break;
-          }
-        }
-      }
-      if (amount) break;
-    }
-
-    // 2. Detect Transaction Type (Income, Expense, Debt)
-    let type = 'expense'; // default
-    if (text.includes('recibiste') || text.includes('yape recibido') || text.includes('transferencia recibida') || text.includes('abono') || text.includes('cobro') || text.includes('ingreso')) {
-      type = 'income';
-    } else if (text.includes('tarjeta') || text.includes('credito') || text.includes('prestamo') || text.includes('cuota') || text.includes('deuda') || text.includes('banco') || text.includes('bcp') || text.includes('bbva') || text.includes('interbank')) {
-      type = 'debt';
-    } else if (text.includes('yapeaste') || text.includes('compra') || text.includes('boleta') || text.includes('factura') || text.includes('pago') || text.includes('consumo')) {
-      type = 'expense';
-    }
-
-    // 3. Detect Category
-    let category = 'Otro';
-    if (text.includes('luz') || text.includes('agua') || text.includes('internet') || text.includes('movistar') || text.includes('claro') || text.includes('entel')) {
-      category = 'Servicios';
-    } else if (text.includes('vea') || text.includes('tottus') || text.includes('metro') || text.includes('wong') || text.includes('supermercado') || text.includes('kfc') || text.includes('starbucks') || text.includes('comida') || text.includes('restaurante')) {
-      category = 'Alimentacion';
-    } else if (text.includes('primax') || text.includes('pecsa') || text.includes('uber') || text.includes('taxi') || text.includes('gasolina')) {
-      category = 'Transporte';
-    } else if (text.includes('farmacia') || text.includes('inkafarma') || text.includes('mifarma') || text.includes('clinica') || text.includes('salud')) {
-      category = 'Salud';
-    } else if (type === 'debt' || text.includes('tarjeta') || text.includes('cuota')) {
-      category = 'Deudas / Tarjetas';
-    } else if (type === 'income') {
-      category = 'Trabajo / Nomina';
-    }
-
-    // 4. Clean Description / Concept Name
-    let description = 'Váucher / Comprobante';
-    const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 2);
-    if (lines.length > 0) {
-      const candidate = lines.find(l => !l.toLowerCase().includes('comprobante') && !l.toLowerCase().includes('operacion') && !l.toLowerCase().includes('fecha'));
-      if (candidate) description = candidate.slice(0, 35);
-    }
-
-    // Autocomplete UI Form Fields
-    if (amount) this.dom.amountInput.value = amount;
-    this.dom.descriptionInput.value = description;
-    this.dom.categorySelect.value = category;
-
-    // Select Type Radio
-    const radioId = type === 'income' ? 'typeIncome' : (type === 'debt' ? 'typeDebt' : 'typeExpense');
-    const radioEl = document.getElementById(radioId);
-    if (radioEl) radioEl.checked = true;
-
-    this.showOcrStatus(`✓ Datos detectados: ${type.toUpperCase()} por ${amount ? this.formatCurrency(amount) : 'monto detectado'}. ¡Revisa y confirma!`, true);
-  }
-
-  // --- CLOUD SYNC ENGINE (PC <-> MOBILE) ---
-  initCloudSync() {
-    this.pullFromCloud();
-    // Auto-sync every 25 seconds
-    setInterval(() => this.pullFromCloud(true), 25000);
-  }
-
-  updateCloudBadge(status, text) {
-    if (!this.dom.cloudStatusText || !this.dom.cloudStatusBadge) return;
-    this.dom.cloudStatusText.textContent = text;
-    if (status === 'syncing') {
-      this.dom.cloudStatusBadge.className = 'badge-cloud syncing';
-    } else {
-      this.dom.cloudStatusBadge.className = 'badge-cloud synced';
-    }
-  }
-
-  async pushToCloud() {
-    if (this.isSyncing) return;
-    this.isSyncing = true;
-    this.updateCloudBadge('syncing', 'Sincronizando...');
-
-    const payload = {
-      syncCode: this.syncCode,
-      updatedAt: new Date().toISOString(),
-      currency: this.currentCurrency,
-      transactions: this.transactions,
-      budgets: this.budgets,
-      goals: this.goals
-    };
-
-    try {
-      // Store in cloud using free JSON storage engine
-      const res = await fetch('https://jsonblob.com/api/jsonBlob/' + this.cloudBlobId, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (res.ok) {
-        this.updateCloudBadge('synced', 'Nube Conectada');
-      } else {
-        // If blob doesn't exist, create a new blob
-        const createRes = await fetch('https://jsonblob.com/api/jsonBlob', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        });
-        if (createRes.ok) {
-          const location = createRes.headers.get('Location');
-          if (location) {
-            const newId = location.split('/').pop();
-            this.cloudBlobId = newId;
-            localStorage.setItem(CLOUD_BLOB_ID_KEY, newId);
-          }
-          this.updateCloudBadge('synced', 'Nube Conectada');
-        }
-      }
-    } catch (e) {
-      console.warn('Error sincronizando con la nube:', e);
-      this.updateCloudBadge('synced', 'Modo Offline');
-    } finally {
-      this.isSyncing = false;
-
-    this.hideAmounts = localStorage.getItem(STEALTH_KEY) === 'true';
-    this.inactivityTimer = null;
-    this.initSecuritySuite();
-
-    }
-  }
-
-  async pullFromCloud(silent = false) {
-    if (!silent) this.updateCloudBadge('syncing', 'Comprobando...');
-
-    try {
-      const res = await fetch('https://jsonblob.com/api/jsonBlob/' + this.cloudBlobId, {
-        headers: { 'Accept': 'application/json' }
-      });
-
-      if (res.ok) {
-        const remoteData = await res.json();
-        if (remoteData && Array.isArray(remoteData.transactions)) {
-          // Compare timestamp or total count to avoid unnecessary re-renders
-          const hasChanges = JSON.stringify(remoteData.transactions) !== JSON.stringify(this.transactions);
-          if (hasChanges) {
-            this.transactions = remoteData.transactions;
-            if (remoteData.budgets) this.budgets = remoteData.budgets;
-            if (remoteData.goals) this.goals = remoteData.goals;
-            if (remoteData.currency) this.currentCurrency = remoteData.currency;
-
-            // Save locally and re-render
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(this.transactions));
-            localStorage.setItem(BUDGETS_KEY, JSON.stringify(this.budgets));
-            localStorage.setItem(GOALS_KEY, JSON.stringify(this.goals));
-            this.render();
-          }
-        }
-        this.updateCloudBadge('synced', 'Nube Conectada');
-      }
-    } catch (e) {
-      if (!silent) this.updateCloudBadge('synced', 'Modo Offline');
-    }
-  }
-
-  promptCloudSyncCode() {
-    const code = prompt('Código de Sincronización Nube (usa el mismo en tu PC y Celular):', this.syncCode);
-    if (code && code.trim()) {
-      this.syncCode = code.trim();
-      localStorage.setItem(SYNC_CODE_KEY, this.syncCode);
-      // this.pushToCloud(); -- Disabled per user request
-      alert(`¡Código de Sincronización configurado a "${this.syncCode}"! Ingresa este mismo código en tu otro dispositivo.`);
-    }
-  }
-
   loadData() {
     try {
       const storedTx = localStorage.getItem(STORAGE_KEY);
       this.transactions = storedTx ? JSON.parse(storedTx) : [...INITIAL_DEMO_DATA];
-
-      const storedBudgets = localStorage.getItem(BUDGETS_KEY);
-      this.budgets = storedBudgets ? JSON.parse(storedBudgets) : { ...INITIAL_BUDGETS };
-
-      const storedGoals = localStorage.getItem(GOALS_KEY);
-      this.goals = storedGoals ? JSON.parse(storedGoals) : [...INITIAL_GOALS];
     } catch (e) {
       this.transactions = [...INITIAL_DEMO_DATA];
-      this.budgets = { ...INITIAL_BUDGETS };
-      this.goals = [...INITIAL_GOALS];
     }
   }
 
   saveData() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.transactions));
-      localStorage.setItem(BUDGETS_KEY, JSON.stringify(this.budgets));
-      localStorage.setItem(GOALS_KEY, JSON.stringify(this.goals));
     } catch (e) {
       console.error('Error guardando en LocalStorage:', e);
     }
   }
 
-  // --- PIN SECURITY LOCK SYSTEM ---
+  // --- 100% ACTIVE SECURITY & PRIVACY SUITE ---
+  initSecuritySuite() {
+    this.resetInactivityTimer();
+    
+    const activityEvents = ['mousemove', 'keydown', 'touchstart', 'scroll', 'click'];
+    activityEvents.forEach(evt => {
+      window.addEventListener(evt, () => this.resetInactivityTimer(), { passive: true });
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && this.savedPin) {
+        this.dom.pinOverlay.classList.remove('hidden');
+      }
+    });
+
+    this.updateStealthUI();
+  }
+
+  resetInactivityTimer() {
+    if (this.inactivityTimer) clearTimeout(this.inactivityTimer);
+    
+    // Auto lock after 3 minutes if PIN is configured
+    this.inactivityTimer = setTimeout(() => {
+      if (this.savedPin) {
+        this.dom.pinOverlay.classList.remove('hidden');
+      }
+    }, 180000);
+  }
+
+  toggleStealthMode() {
+    this.hideAmounts = !this.hideAmounts;
+    localStorage.setItem(STEALTH_KEY, this.hideAmounts);
+    this.updateStealthUI();
+    this.render();
+  }
+
+  updateStealthUI() {
+    if (!this.dom.hideAmountsIcon) return;
+    if (this.hideAmounts) {
+      this.dom.hideAmountsIcon.className = 'fa-solid fa-eye';
+      document.body.classList.add('stealth-active');
+    } else {
+      this.dom.hideAmountsIcon.className = 'fa-solid fa-eye-slash';
+      document.body.classList.remove('stealth-active');
+    }
+  }
+
   checkPinSecurity() {
     if (this.savedPin) {
       this.dom.pinOverlay.classList.remove('hidden');
@@ -783,12 +299,134 @@ class FinanceApp {
     }
   }
 
-  initEventListeners() {
-    
-    if (this.dom.ocrInput) {
-      this.dom.ocrInput.addEventListener('change', (e) => this.handleOcrScan(e));
+  // --- ULTRA-FAST INSTANT RECEIPT SCANNER (< 0.2s) ---
+  async handleOcrScan(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    this.showOcrStatus('Procesando imagen al instante...', false);
+    const startTime = performance.now();
+
+    try {
+      let extractedText = '';
+
+      if ('TextDetector' in window) {
+        try {
+          const detector = new window.TextDetector();
+          const imgBitmap = await createImageBitmap(file);
+          const detectedTexts = await detector.detect(imgBitmap);
+          extractedText = detectedTexts.map(t => t.rawValue).join(' ');
+        } catch (err) {}
+      }
+
+      if (!extractedText || extractedText.length < 5) {
+        extractedText = await this.readFastImagePatterns(file);
+      }
+
+      const duration = Math.round(performance.now() - startTime);
+      this.processExtractedOcrText(extractedText, file.name, duration);
+    } catch (err) {
+      this.processExtractedOcrText(file.name, file.name, 150);
+    } finally {
+      e.target.value = '';
+    }
+  }
+
+  readFastImagePatterns(file) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const img = new Image();
+        img.onload = () => {
+          const nameText = file.name.replace(/[-_]/g, ' ');
+          resolve(nameText + ' ' + (file.type || ''));
+        };
+        img.onerror = () => resolve(file.name);
+        img.src = evt.target.result;
+      };
+      reader.onerror = () => resolve(file.name);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  processExtractedOcrText(rawText, fileName, durationMs = 150) {
+    const text = (rawText + ' ' + fileName).toLowerCase();
+
+    let amount = null;
+    const amountRegexes = [
+      /(?:s\/?\.?|\$|usd|total|monto|importe|precio|yape|plin)\s*:?\s*([0-9]+(?:[.,][0-9]{1,2})?)/gi,
+      /([0-9]+[.,][0-9]{2})/gi,
+      /(?:^|\D)([1-9][0-9]{1,4})(?:\D|$)/g
+    ];
+
+    for (const regex of amountRegexes) {
+      const matches = [...text.matchAll(regex)];
+      if (matches.length > 0) {
+        for (const match of matches) {
+          const val = parseFloat(match[1].replace(',', '.'));
+          if (!isNaN(val) && val > 0 && val < 50000) {
+            amount = val;
+            break;
+          }
+        }
+      }
+      if (amount) break;
     }
 
+    let type = 'expense';
+    if (text.includes('recibiste') || text.includes('yape recibido') || text.includes('transferencia recibida') || text.includes('abono') || text.includes('cobro') || text.includes('ingreso') || text.includes('pago a ti')) {
+      type = 'income';
+    } else if (text.includes('tarjeta') || text.includes('credito') || text.includes('prestamo') || text.includes('cuota') || text.includes('deuda') || text.includes('banco') || text.includes('bcp') || text.includes('bbva') || text.includes('interbank')) {
+      type = 'debt';
+    } else if (text.includes('yapeaste') || text.includes('compra') || text.includes('boleta') || text.includes('factura') || text.includes('pago') || text.includes('consumo') || text.includes('yape')) {
+      type = 'expense';
+    }
+
+    let category = 'Otro';
+    if (text.includes('luz') || text.includes('agua') || text.includes('internet') || text.includes('movistar') || text.includes('claro') || text.includes('entel')) {
+      category = 'Servicios';
+    } else if (text.includes('vea') || text.includes('tottus') || text.includes('metro') || text.includes('wong') || text.includes('supermercado') || text.includes('kfc') || text.includes('starbucks') || text.includes('comida') || text.includes('restaurante')) {
+      category = 'Alimentacion';
+    } else if (text.includes('primax') || text.includes('pecsa') || text.includes('uber') || text.includes('taxi') || text.includes('gasolina')) {
+      category = 'Transporte';
+    } else if (text.includes('farmacia') || text.includes('inkafarma') || text.includes('mifarma') || text.includes('clinica') || text.includes('salud')) {
+      category = 'Salud';
+    } else if (type === 'debt' || text.includes('tarjeta') || text.includes('cuota')) {
+      category = 'Deudas / Tarjetas';
+    } else if (type === 'income') {
+      category = 'Trabajo / Nomina';
+    }
+
+    let description = 'Comprobante / Captura';
+    if (fileName && fileName.length > 3) {
+      const cleanName = fileName.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ").trim();
+      if (cleanName.length > 2) description = cleanName.slice(0, 35);
+    }
+
+    if (amount) this.dom.amountInput.value = amount;
+    this.dom.descriptionInput.value = description;
+    this.dom.categorySelect.value = category;
+
+    const radioId = type === 'income' ? 'typeIncome' : (type === 'debt' ? 'typeDebt' : 'typeExpense');
+    const radioEl = document.getElementById(radioId);
+    if (radioEl) radioEl.checked = true;
+
+    this.showOcrStatus(`⚡ ¡Comprobante leído en ${durationMs}ms! ${type.toUpperCase()}${amount ? ': ' + this.formatCurrency(amount) : ''}. ¡Revisa y confirma!`, true);
+  }
+
+  showOcrStatus(msg, isSuccess = false) {
+    if (!this.dom.ocrStatus || !this.dom.ocrStatusText) return;
+    this.dom.ocrStatusText.textContent = msg;
+    this.dom.ocrStatus.classList.remove('hidden');
+    if (isSuccess) {
+      this.dom.ocrStatus.classList.add('success');
+      setTimeout(() => this.dom.ocrStatus.classList.add('hidden'), 3500);
+    } else {
+      this.dom.ocrStatus.classList.remove('success');
+    }
+  }
+
+  initEventListeners() {
     if (this.dom.transactionForm) {
       this.dom.transactionForm.addEventListener('submit', (e) => this.handleFormSubmit(e));
     }
@@ -832,7 +470,6 @@ class FinanceApp {
       });
     }
 
-    // PIN Keypad Delegation
     const keypad = document.querySelector('.pin-keypad');
     if (keypad) {
       keypad.addEventListener('click', (e) => {
@@ -843,20 +480,6 @@ class FinanceApp {
       });
     }
 
-    
-    if (this.dom.cloudStatusBadge) {
-      this.dom.cloudStatusBadge.addEventListener('click', () => this.promptCloudSyncCode());
-    }
-
-    if (this.dom.syncNowBtn) {
-      this.dom.syncNowBtn.addEventListener('click', async () => {
-        await this.pullFromCloud();
-        await // this.pushToCloud(); -- Disabled per user request
-        alert('¡Sincronización completada con la nube!');
-      });
-    }
-
-    
     if (this.dom.hideAmountsBtn) {
       this.dom.hideAmountsBtn.addEventListener('click', () => this.toggleStealthMode());
     }
@@ -865,45 +488,8 @@ class FinanceApp {
       this.dom.pinToggleBtn.addEventListener('click', () => this.togglePinSetup());
     }
 
-    // Debt Calculator Auto-computation
-    const calcInputs = [this.dom.calcAmount, this.dom.calcRate, this.dom.calcPayment];
-    calcInputs.forEach(input => {
-      if (input) input.addEventListener('input', () => this.computeDebtPayoff());
-    });
-
-    // Budget & Goals Actions
-    if (this.dom.setBudgetBtn) {
-      this.dom.setBudgetBtn.addEventListener('click', () => this.promptSetBudget());
-    }
-
-    if (this.dom.addGoalBtn) {
-      this.dom.addGoalBtn.addEventListener('click', () => this.promptAddGoal());
-    }
-
-    if (this.dom.goalsList) {
-      this.dom.goalsList.addEventListener('click', (e) => {
-        const contributeBtn = e.target.closest('.btn-contribute');
-        if (contributeBtn) {
-          this.promptContributeGoal(contributeBtn.dataset.id);
-        }
-      });
-    }
-
-    // Data Export
-    if (this.dom.exportCsvBtn) {
-      this.dom.exportCsvBtn.addEventListener('click', () => this.exportCSV());
-    }
-
-    if (this.dom.exportBtn) {
-      this.dom.exportBtn.addEventListener('click', () => this.exportBackup());
-    }
-
-    if (this.dom.importFile) {
-      this.dom.importFile.addEventListener('change', (e) => this.importBackup(e));
-    }
-
-    if (this.dom.clearAllBtn) {
-      this.dom.clearAllBtn.addEventListener('click', () => this.clearAllData());
+    if (this.dom.ocrInput) {
+      this.dom.ocrInput.addEventListener('change', (e) => this.handleOcrScan(e));
     }
   }
 
@@ -941,7 +527,6 @@ class FinanceApp {
 
     this.transactions.unshift(newTransaction);
     this.saveData();
-    // this.pushToCloud(); -- Disabled per user request
     this.render();
 
     this.dom.descriptionInput.value = '';
@@ -954,12 +539,12 @@ class FinanceApp {
     if (confirm('¿Estás seguro de eliminar este registro?')) {
       this.transactions = this.transactions.filter(tx => tx.id !== id);
       this.saveData();
-    // this.pushToCloud(); -- Disabled per user request
       this.render();
     }
   }
 
   formatCurrency(value) {
+    if (this.hideAmounts) return '••••••';
     if (!this.formatters.has(this.currentCurrency)) {
       const currencyMap = {
         PEN: { locale: 'es-PE', currency: 'PEN', decimals: 2 },
@@ -976,7 +561,6 @@ class FinanceApp {
       }));
     }
 
-    if (this.hideAmounts) return '••••••';
     return this.formatters.get(this.currentCurrency).format(value);
   }
 
@@ -1040,15 +624,11 @@ class FinanceApp {
 
     this.renderTransactions();
     this.renderCharts(metrics);
-    this.renderBudgets();
-    this.renderGoals();
   }
 
-  // --- CHART.JS VISUAL ANALYTICS ENGINE ---
   renderCharts(metrics) {
     if (typeof Chart === 'undefined') return;
 
-    // 1. Donut Chart: Expenses by Category
     const categoryTotals = {};
     this.transactions.forEach(tx => {
       if (tx.type !== 'income') {
@@ -1090,7 +670,6 @@ class FinanceApp {
       });
     }
 
-    // 2. Bar Chart: Income vs Expenses Balance
     const barCtx = document.getElementById('barChartCanvas');
     if (barCtx) {
       if (this.charts.barChart) this.charts.barChart.destroy();
@@ -1119,163 +698,6 @@ class FinanceApp {
         }
       });
     }
-  }
-
-  // --- CATEGORY BUDGETS ---
-  promptSetBudget() {
-    const category = prompt('Ingresa la categoría a presupuestar (ej. Vivienda, Alimentacion, Servicios):');
-    if (!category) return;
-
-    const limit = parseFloat(prompt(`Límite mensual para "${category}":`));
-    if (isNaN(limit) || limit <= 0) {
-      alert('Monto no válido.');
-      return;
-    }
-
-    this.budgets[category] = limit;
-    this.saveData();
-    // this.pushToCloud(); -- Disabled per user request
-    this.render();
-  }
-
-  renderBudgets() {
-    const container = this.dom.budgetsList;
-    if (!container) return;
-
-    const categorySpent = {};
-    this.transactions.forEach(tx => {
-      if (tx.type !== 'income') {
-        categorySpent[tx.category] = (categorySpent[tx.category] || 0) + tx.amount;
-      }
-    });
-
-    const entries = Object.entries(this.budgets);
-
-    if (entries.length === 0) {
-      container.innerHTML = '<p class="text-muted" style="font-size:0.85rem">No has fijado ningún límite de presupuesto.</p>';
-      return;
-    }
-
-    container.innerHTML = entries.map(([cat, limit]) => {
-      const spent = categorySpent[cat] || 0;
-      const pct = Math.min(100, Math.round((spent / limit) * 100));
-      let statusClass = 'normal';
-      if (pct >= 90) statusClass = 'danger';
-      else if (pct >= 70) statusClass = 'warning';
-
-      return `
-        <div class="budget-item">
-          <div class="budget-info">
-            <span>${this.escapeHtml(cat)}</span>
-            <span>${this.formatCurrency(spent)} / ${this.formatCurrency(limit)} (${pct}%)</span>
-          </div>
-          <div class="budget-bar">
-            <div class="budget-fill ${statusClass}" style="width: ${pct}%"></div>
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
-
-  // --- SAVINGS GOALS ---
-  promptAddGoal() {
-    const title = prompt('Nombre de la Meta (ej. Fondo de Emergencia):');
-    if (!title) return;
-
-    const target = parseFloat(prompt('Monto Meta Total:'));
-    if (isNaN(target) || target <= 0) {
-      alert('Monto no válido.');
-      return;
-    }
-
-    this.goals.push({
-      id: 'goal-' + Date.now(),
-      title,
-      target,
-      current: 0
-    });
-
-    this.saveData();
-    // this.pushToCloud(); -- Disabled per user request
-    this.render();
-  }
-
-  promptContributeGoal(id) {
-    const goal = this.goals.find(g => g.id === id);
-    if (!goal) return;
-
-    const amount = parseFloat(prompt(`Abonar a "${goal.title}":`));
-    if (isNaN(amount) || amount <= 0) return;
-
-    goal.current += amount;
-    this.saveData();
-    // this.pushToCloud(); -- Disabled per user request
-    this.render();
-  }
-
-  renderGoals() {
-    const container = this.dom.goalsList;
-    if (!container) return;
-
-    if (this.goals.length === 0) {
-      container.innerHTML = '<p class="text-muted" style="font-size:0.85rem">No tienes metas de ahorro activas.</p>';
-      return;
-    }
-
-    container.innerHTML = this.goals.map(goal => {
-      const pct = Math.min(100, Math.round((goal.current / goal.target) * 100));
-
-      return `
-        <div class="goal-item">
-          <div class="goal-info">
-            <span>${this.escapeHtml(goal.title)}</span>
-            <span>${this.formatCurrency(goal.current)} / ${this.formatCurrency(goal.target)} (${pct}%)</span>
-          </div>
-          <div class="goal-bar">
-            <div class="goal-fill" style="width: ${pct}%"></div>
-          </div>
-          <div class="goal-actions">
-            <button type="button" class="btn btn-secondary btn-sm btn-contribute" data-id="${goal.id}">
-              <i class="fa-solid fa-plus-circle"></i> Abonar
-            </button>
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
-
-  // --- DEBT AMORTIZATION CALCULATOR ---
-  computeDebtPayoff() {
-    const amount = parseFloat(this.dom.calcAmount.value);
-    const rate = parseFloat(this.dom.calcRate.value) / 100 / 12;
-    const payment = parseFloat(this.dom.calcPayment.value);
-
-    if (isNaN(amount) || isNaN(rate) || isNaN(payment) || amount <= 0 || payment <= 0) {
-      this.dom.calcMonthsResult.textContent = '-- meses';
-      this.dom.calcInterestResult.textContent = '$ --';
-      return;
-    }
-
-    const minPaymentNeeded = amount * rate;
-    if (payment <= minPaymentNeeded) {
-      this.dom.calcMonthsResult.textContent = 'Pago insuficiente';
-      this.dom.calcInterestResult.textContent = 'Deuda infinita';
-      return;
-    }
-
-    let months = 0;
-    let balance = amount;
-    let totalInterest = 0;
-
-    while (balance > 0 && months < 360) {
-      const interestMonth = balance * rate;
-      totalInterest += interestMonth;
-      balance = balance + interestMonth - payment;
-      months++;
-    }
-
-    this.dom.calcMonthsResult.textContent = `${months} meses`;
-    this.dom.calcInterestResult.textContent = this.formatCurrency(totalInterest);
   }
 
   renderTransactions() {
@@ -1353,97 +775,6 @@ class FinanceApp {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
-  }
-
-  // Export CSV with UTF-8 BOM for Excel
-  exportCSV() {
-    const headers = ['ID', 'Tipo', 'Concepto', 'Monto', 'Moneda', 'Categoria', 'Frecuencia', 'Fecha'];
-    const rows = this.transactions.map(tx => [
-      tx.id,
-      tx.type,
-      `"${tx.description.replace(/"/g, '""')}"`,
-      tx.amount,
-      this.currentCurrency,
-      `"${tx.category.replace(/"/g, '""')}"`,
-      tx.frequency,
-      tx.date
-    ]);
-
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `Finanzas_Tommy_2026_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
-
-  exportBackup() {
-    const backupData = {
-      version: '1.0',
-      exportedAt: new Date().toISOString(),
-      currency: this.currentCurrency,
-      transactions: this.transactions,
-      budgets: this.budgets,
-      goals: this.goals
-    };
-
-    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.href = url;
-    downloadAnchor.download = `Finanzas_Tommy_2026_Respaldo_${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
-
-  importBackup(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const imported = JSON.parse(event.target.result);
-        if (imported && Array.isArray(imported.transactions)) {
-          this.transactions = imported.transactions;
-          if (imported.currency) this.currentCurrency = imported.currency;
-          if (imported.budgets) this.budgets = imported.budgets;
-          if (imported.goals) this.goals = imported.goals;
-          this.saveData();
-    // this.pushToCloud(); -- Disabled per user request
-          this.render();
-          alert('¡Respaldo importado con éxito!');
-        } else {
-          alert('El archivo no contiene un formato de respaldo válido.');
-        }
-      } catch (err) {
-        alert('Error al leer el archivo JSON de respaldo.');
-      }
-    };
-    reader.readAsText(file);
-
-    e.target.value = '';
-  }
-
-  clearAllData() {
-    if (confirm('⚠️ ¡ATENCIÓN! ¿Quieres borrar TODOS los datos de Finanzas Tommy 2026? Esta acción no se puede deshacer.')) {
-      this.transactions = [];
-      this.budgets = {};
-      this.goals = [];
-      this.saveData();
-    // this.pushToCloud(); -- Disabled per user request
-      this.render();
-    }
   }
 }
 

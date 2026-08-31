@@ -1,4 +1,4 @@
-const CACHE_NAME = 'finanzas-2026-v11';
+const CACHE_NAME = 'finanzas-2026-v12';
 const ASSETS_TO_CACHE = [
   './styles.css',
   './app.js',
@@ -30,7 +30,6 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Network-First for HTML to prevent caching delays on code updates
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
