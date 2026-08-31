@@ -110,7 +110,8 @@ class FinanceApp {
     this.savedPin = localStorage.getItem(PIN_KEY) || '';
     
     this.formatters = new Map();
-    this.syncCode = localStorage.getItem(SYNC_CODE_KEY) || 'TOMMY-FINANZAS-2026';
+    this.syncCode = localStorage.getItem(SYNC_CODE_KEY) || ('USER-' + Math.floor(100000 + Math.random() * 900000));
+    if (!localStorage.getItem(SYNC_CODE_KEY)) localStorage.setItem(SYNC_CODE_KEY, this.syncCode);
     this.cloudBlobId = localStorage.getItem(CLOUD_BLOB_ID_KEY) || '6d0a793a-8664-11ef-b124-0242ac110002';
     this.isSyncing = false;
 

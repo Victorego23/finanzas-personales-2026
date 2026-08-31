@@ -1,7 +1,5 @@
-const CACHE_NAME = 'finanzas-2026-v3';
+const CACHE_NAME = 'finanzas-2026-v4';
 const ASSETS_TO_CACHE = [
-  './',
-  './index.html',
   './styles.css',
   './app.js',
   './manifest.webmanifest',
@@ -32,20 +30,30 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Network-First for HTML to prevent caching delays on code updates
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
-  
+
+  const url = new URL(event.request.url);
+
+  if (event.request.mode === 'navigate' || url.pathname.endsWith('index.html')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
-          }
-        }).catch(() => {});
-        return cachedResponse;
-      }
-      return fetch(event.request).then((networkResponse) => {
+      return cachedResponse || fetch(event.request).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
