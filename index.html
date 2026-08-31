@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Control Financiero Personal 2026 - Herramienta web privada, minimalista y moderna de gestión de ingresos, gastos y deudas.">
+  <title>Control Financiero Personal 2026 | Fintech Dashboard</title>
+  
+  <!-- Typography & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- App Header -->
+    <header class="app-header">
+      <div class="header-brand">
+        <div class="brand-icon">
+          <i class="fa-solid fa-wallet"></i>
+        </div>
+        <div>
+          <h1>Finanzas 2026</h1>
+          <p class="subtitle">Control privado de ingresos, gastos y deudas</p>
+        </div>
+      </div>
+
+      <div class="header-controls">
+        <div class="badge-privacy">
+          <i class="fa-solid fa-shield-halved"></i>
+          <span>100% Local & Privado</span>
+        </div>
+
+        <div class="currency-selector-wrapper">
+          <label for="currencySelect" class="sr-only">Moneda</label>
+          <select id="currencySelect" class="form-select-sm">
+            <option value="COP">COP ($)</option>
+            <option value="USD">USD ($)</option>
+            <option value="EUR">EUR (€)</option>
+            <option value="MXN">MXN ($)</option>
+          </select>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-layout">
+      <!-- Summary Dashboard / KPI Cards -->
+      <section class="kpi-grid" aria-label="Resumen de balance">
+        <!-- Ingresos Card -->
+        <div class="kpi-card card-income">
+          <div class="kpi-header">
+            <span class="kpi-label">Ingresos Totales</span>
+            <div class="kpi-icon icon-income">
+              <i class="fa-solid fa-arrow-trend-up"></i>
+            </div>
+          </div>
+          <div class="kpi-value" id="totalIncome">$ 0</div>
+          <div class="kpi-subtext">
+            <span id="incomeCount">0</span> registro(s) activo(s)
+          </div>
+        </div>
+
+        <!-- Gastos & Deudas Card -->
+        <div class="kpi-card card-expenses">
+          <div class="kpi-header">
+            <span class="kpi-label">Gastos y Deudas</span>
+            <div class="kpi-icon icon-expense">
+              <i class="fa-solid fa-arrow-trend-down"></i>
+            </div>
+          </div>
+          <div class="kpi-value" id="totalExpenses">$ 0</div>
+          <div class="kpi-subtext">
+            <span id="expenseCount">0</span> registro(s) de salida
+          </div>
+        </div>
+
+        <!-- Balance Neto Card -->
+        <div class="kpi-card card-balance">
+          <div class="kpi-header">
+            <span class="kpi-label">Balance Disponible</span>
+            <div class="kpi-icon icon-balance">
+              <i class="fa-solid fa-scale-balanced"></i>
+            </div>
+          </div>
+          <div class="kpi-value" id="netBalance">$ 0</div>
+          <div class="kpi-subtext" id="balanceStatusText">
+            Sin movimientos registrados
+          </div>
+        </div>
+
+        <!-- Ratio de Salud Card -->
+        <div class="kpi-card card-health">
+          <div class="kpi-header">
+            <span class="kpi-label">Capacidad de Ahorro</span>
+            <div class="kpi-icon icon-health">
+              <i class="fa-solid fa-piggy-bank"></i>
+            </div>
+          </div>
+          <div class="kpi-value" id="healthRatio">0%</div>
+          <div class="kpi-subtext">
+            Margen libre de tus ingresos
+          </div>
+        </div>
+      </section>
+
+      <!-- Financial Health Progress Bar -->
+      <section class="progress-section card-floating">
+        <div class="progress-info">
+          <span>Distribución de Ingresos Comprometidos</span>
+          <span id="progressPercentage">0% utilizado</span>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar-fill" id="progressBarFill" style="width: 0%;"></div>
+        </div>
+      </section>
+
+      <!-- Main Columns: Form & List -->
+      <div class="workspace-grid">
+        <!-- Column 1: Add Transaction Form -->
+        <section class="card-floating form-card">
+          <div class="card-title">
+            <i class="fa-solid fa-circle-plus"></i>
+            <h2>Nuevo Registro</h2>
+          </div>
+
+          <form id="transactionForm" novalidate>
+            <!-- Tipo de Movimiento -->
+            <div class="form-group">
+              <label>Tipo de Movimiento</label>
+              <div class="type-selector">
+                <input type="radio" id="typeIncome" name="transactionType" value="income" checked>
+                <label for="typeIncome" class="type-btn btn-type-income">
+                  <i class="fa-solid fa-arrow-up"></i> Ingreso
+                </label>
+
+                <input type="radio" id="typeExpense" name="transactionType" value="expense">
+                <label for="typeExpense" class="type-btn btn-type-expense">
+                  <i class="fa-solid fa-arrow-down"></i> Gasto
+                </label>
+
+                <input type="radio" id="typeDebt" name="transactionType" value="debt">
+                <label for="typeDebt" class="type-btn btn-type-debt">
+                  <i class="fa-solid fa-credit-card"></i> Deuda
+                </label>
+              </div>
+            </div>
+
+            <!-- Concepto / Descripción -->
+            <div class="form-group">
+              <label for="descriptionInput">Concepto / Nombre</label>
+              <input type="text" id="descriptionInput" class="form-input" placeholder="Ej. Salario mensual, Arriendo, Tarjeta Crédito..." required>
+            </div>
+
+            <!-- Monto & Categoría -->
+            <div class="form-row">
+              <div class="form-group col-half">
+                <label for="amountInput">Monto ($)</label>
+                <input type="number" id="amountInput" class="form-input" placeholder="0.00" min="0" step="any" required>
+              </div>
+
+              <div class="form-group col-half">
+                <label for="categorySelect">Categoría</label>
+                <select id="categorySelect" class="form-select" required>
+                  <option value="Trabajo / Nomina">💼 Trabajo / Nómina</option>
+                  <option value="Vivienda">🏠 Vivienda</option>
+                  <option value="Servicios">⚡ Servicios Públicos</option>
+                  <option value="Alimentacion">🛒 Alimentación</option>
+                  <option value="Transporte">🚗 Transporte</option>
+                  <option value="Salud">🏥 Salud</option>
+                  <option value="Educacion">🎓 Educación</option>
+                  <option value="Deudas / Tarjetas">💳 Deudas / Tarjetas</option>
+                  <option value="Entretenimiento">🍿 Ocio / Varios</option>
+                  <option value="Inversion">📈 Inversión / Ahorro</option>
+                  <option value="Otro">🌀 Otro</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Frecuencia & Fecha -->
+            <div class="form-row">
+              <div class="form-group col-half">
+                <label for="frequencySelect">Frecuencia</label>
+                <select id="frequencySelect" class="form-select">
+                  <option value="Fijo">Fijo (Mensual)</option>
+                  <option value="Variable">Variable / Ocasional</option>
+                </select>
+              </div>
+
+              <div class="form-group col-half">
+                <label for="dateInput">Fecha</label>
+                <input type="date" id="dateInput" class="form-input">
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">
+              <i class="fa-solid fa-plus"></i> Añadir Registro
+            </button>
+          </form>
+        </section>
+
+        <!-- Column 2: Transactions List -->
+        <section class="card-floating list-card">
+          <div class="list-header">
+            <div class="card-title">
+              <i class="fa-solid fa-list-check"></i>
+              <h2>Movimientos 2026</h2>
+            </div>
+
+            <!-- Quick Filters -->
+            <div class="filter-pills">
+              <button class="pill active" data-filter="all">Todos</button>
+              <button class="pill" data-filter="income">Ingresos</button>
+              <button class="pill" data-filter="expense">Gastos</button>
+              <button class="pill" data-filter="debt">Deudas</button>
+              <button class="pill" data-filter="fixed">Fijos</button>
+            </div>
+          </div>
+
+          <!-- Search Bar -->
+          <div class="search-bar">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="searchInput" class="search-input" placeholder="Buscar por concepto o categoría...">
+          </div>
+
+          <!-- List Container -->
+          <div class="transactions-container" id="transactionsList">
+            <!-- Items renders dynamically via app.js -->
+          </div>
+        </section>
+      </div>
+
+      <!-- Backup & Data Management -->
+      <section class="card-floating data-management-card">
+        <div class="data-management-header">
+          <div>
+            <h3><i class="fa-solid fa-database"></i> Gestión de Datos & Privacidad</h3>
+            <p class="text-muted">Tus registros viven exclusivamente en el almacenamiento interno de tu navegador.</p>
+          </div>
+
+          <div class="data-actions">
+            <button id="exportBtn" class="btn btn-secondary">
+              <i class="fa-solid fa-download"></i> Exportar Respaldo JSON
+            </button>
+            
+            <label for="importFile" class="btn btn-secondary btn-file">
+              <i class="fa-solid fa-upload"></i> Importar Respaldo
+              <input type="file" id="importFile" accept=".json" class="sr-only">
+            </label>
+
+            <button id="clearAllBtn" class="btn btn-danger-outline">
+              <i class="fa-solid fa-trash-can"></i> Reiniciar Datos
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>Control Financiero Personal &copy; 2026 &bull; Diseñado con Arquitectura Limpia &bull; Modo Oscuro Minimalista</p>
+    </footer>
+  </div>
+
+  <!-- JavaScript -->
+  <script src="app.js"></script>
+</body>
+</html>
