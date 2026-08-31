@@ -108,8 +108,16 @@ class FinanceApp {
 
   registerServiceWorker() {
     if ('serviceWorker' in navigator) {
+      // Force purge old mobile caches
+      if (typeof caches !== 'undefined') {
+        caches.keys().then(keys => {
+          keys.forEach(key => {
+            if (key !== 'finanzas-2026-v14') caches.delete(key);
+          });
+        });
+      }
       navigator.serviceWorker.register('./sw.js')
-        .then(() => console.log('Service Worker activo'))
+        .then(reg => reg.update())
         .catch(() => {});
     }
   }
