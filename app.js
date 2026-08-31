@@ -1,5 +1,5 @@
 /**
- * Control Financiero Personal 2026 - Versión Fintech PWA Completa
+ * Finanzas Tommy 2026 - Versión Fintech PWA Completa
  * Incluye: Visual Analytics (Chart.js), Presupuestos, Metas de Ahorro,
  * Calculadora de Deudas, PWA Offline, Exportación Excel CSV y PIN Local.
  */
@@ -851,7 +851,7 @@ class FinanceApp {
 
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `Finanzas_2026_${new Date().toISOString().split('T')[0]}.csv`;
+    anchor.download = `Finanzas_Tommy_2026_${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
@@ -874,7 +874,7 @@ class FinanceApp {
 
     const downloadAnchor = document.createElement('a');
     downloadAnchor.href = url;
-    downloadAnchor.download = `Finanzas_2026_Respaldo_${new Date().toISOString().split('T')[0]}.json`;
+    downloadAnchor.download = `Finanzas_Tommy_2026_Respaldo_${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -911,7 +911,7 @@ class FinanceApp {
   }
 
   clearAllData() {
-    if (confirm('⚠️ ¡ATENCIÓN! ¿Quieres borrar TODOS los datos de tu control financiero 2026? Esta acción no se puede deshacer.')) {
+    if (confirm('⚠️ ¡ATENCIÓN! ¿Quieres borrar TODOS los datos de Finanzas Tommy 2026? Esta acción no se puede deshacer.')) {
       this.transactions = [];
       this.budgets = {};
       this.goals = [];
