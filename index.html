@@ -26,6 +26,7 @@
   <!-- Chart.js Engine -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <!-- Optimized Stylesheet -->
   <link rel="stylesheet" href="styles.css">
   
@@ -278,6 +279,17 @@
           </div>
 
           <form id="transactionForm" novalidate>
+            <!-- OCR Receipt Photo Scanner -->
+            <div class="ocr-scanner-box">
+              <label for="ocrInput" class="btn btn-secondary btn-block btn-ocr" title="Toma una foto o sube una captura de Yape, Plin, BCP, recibo o voucher">
+                <i class="fa-solid fa-camera" aria-hidden="true"></i> <span>Escanear Váucher / Foto</span>
+                <input type="file" id="ocrInput" accept="image/*" capture="environment" class="sr-only">
+              </label>
+              <div id="ocrStatus" class="ocr-status hidden">
+                <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> <span id="ocrStatusText">Leyendo datos del comprobante...</span>
+              </div>
+            </div>
+
             <!-- Tipo de Movimiento -->
             <div class="form-group">
               <label id="typeLabel">Tipo de Movimiento</label>

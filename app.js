@@ -157,6 +157,11 @@ class FinanceApp {
       progressBarFill: document.getElementById('progressBarFill'),
       
       transactionForm: document.getElementById('transactionForm'),
+
+      ocrInput: document.getElementById('ocrInput'),
+      ocrStatus: document.getElementById('ocrStatus'),
+      ocrStatusText: document.getElementById('ocrStatusText'),
+
       descriptionInput: document.getElementById('descriptionInput'),
       amountInput: document.getElementById('amountInput'),
       categorySelect: document.getElementById('categorySelect'),
@@ -203,6 +208,124 @@ class FinanceApp {
     this.updatePinBtnLabel();
   }
 
+
+
+  // --- SMART OCR RECEIPT & VOUCHER SCANNER ---
+  async handleOcrScan(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    this.showOcrStatus('Leyendo datos del comprobante...', false);
+
+    try {
+      let text = '';
+      if (typeof Tesseract !== 'undefined') {
+        const result = await Tesseract.recognize(file, 'spa+eng', {
+          logger: m => {
+            if (m.status === 'recognizing text') {
+              const pct = Math.round((m.progress || 0) * 100);
+              this.showOcrStatus(`Analizando imagen... (${pct}%)`, false);
+            }
+          }
+        });
+        text = result.data.text;
+      } else {
+        // Fallback canvas text simulation if Tesseract CDN isn't loaded
+        text = await this.readImageFileNameFallback(file);
+      }
+
+      this.processExtractedOcrText(text, file.name);
+    } catch (err) {
+      console.warn('Error leyendo imagen:', err);
+      // Fallback parser using filename and prompt fallback
+      this.processExtractedOcrText(file.name, file.name);
+    } finally {
+      e.target.value = '';
+    }
+  }
+
+  showOcrStatus(msg, isSuccess = false) {
+    if (!this.dom.ocrStatus || !this.dom.ocrStatusText) return;
+    this.dom.ocrStatusText.textContent = msg;
+    this.dom.ocrStatus.classList.remove('hidden');
+    if (isSuccess) {
+      this.dom.ocrStatus.classList.add('success');
+      setTimeout(() => this.dom.ocrStatus.classList.add('hidden'), 3500);
+    } else {
+      this.dom.ocrStatus.classList.remove('success');
+    }
+  }
+
+  processExtractedOcrText(rawText, fileName) {
+    const text = rawText.toLowerCase();
+
+    // 1. Detect Amount (Regex for S/, $, USD, Total, Importe, Monto)
+    let amount = null;
+    const amountRegexes = [
+      /(?:s\/?\.?|\$|usd|total|monto|importe|precio)\s*:?\s*([0-9]+(?:[.,][0-9]{1,2})?)/gi,
+      /([0-9]+[.,][0-9]{2})/gi
+    ];
+
+    for (const regex of amountRegexes) {
+      const matches = [...rawText.matchAll(regex)];
+      if (matches.length > 0) {
+        for (const match of matches) {
+          const val = parseFloat(match[1].replace(',', '.'));
+          if (!isNaN(val) && val > 0) {
+            amount = val;
+            break;
+          }
+        }
+      }
+      if (amount) break;
+    }
+
+    // 2. Detect Transaction Type (Income, Expense, Debt)
+    let type = 'expense'; // default
+    if (text.includes('recibiste') || text.includes('yape recibido') || text.includes('transferencia recibida') || text.includes('abono') || text.includes('cobro') || text.includes('ingreso')) {
+      type = 'income';
+    } else if (text.includes('tarjeta') || text.includes('credito') || text.includes('prestamo') || text.includes('cuota') || text.includes('deuda') || text.includes('banco') || text.includes('bcp') || text.includes('bbva') || text.includes('interbank')) {
+      type = 'debt';
+    } else if (text.includes('yapeaste') || text.includes('compra') || text.includes('boleta') || text.includes('factura') || text.includes('pago') || text.includes('consumo')) {
+      type = 'expense';
+    }
+
+    // 3. Detect Category
+    let category = 'Otro';
+    if (text.includes('luz') || text.includes('agua') || text.includes('internet') || text.includes('movistar') || text.includes('claro') || text.includes('entel')) {
+      category = 'Servicios';
+    } else if (text.includes('vea') || text.includes('tottus') || text.includes('metro') || text.includes('wong') || text.includes('supermercado') || text.includes('kfc') || text.includes('starbucks') || text.includes('comida') || text.includes('restaurante')) {
+      category = 'Alimentacion';
+    } else if (text.includes('primax') || text.includes('pecsa') || text.includes('uber') || text.includes('taxi') || text.includes('gasolina')) {
+      category = 'Transporte';
+    } else if (text.includes('farmacia') || text.includes('inkafarma') || text.includes('mifarma') || text.includes('clinica') || text.includes('salud')) {
+      category = 'Salud';
+    } else if (type === 'debt' || text.includes('tarjeta') || text.includes('cuota')) {
+      category = 'Deudas / Tarjetas';
+    } else if (type === 'income') {
+      category = 'Trabajo / Nomina';
+    }
+
+    // 4. Clean Description / Concept Name
+    let description = 'Váucher / Comprobante';
+    const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+    if (lines.length > 0) {
+      const candidate = lines.find(l => !l.toLowerCase().includes('comprobante') && !l.toLowerCase().includes('operacion') && !l.toLowerCase().includes('fecha'));
+      if (candidate) description = candidate.slice(0, 35);
+    }
+
+    // Autocomplete UI Form Fields
+    if (amount) this.dom.amountInput.value = amount;
+    this.dom.descriptionInput.value = description;
+    this.dom.categorySelect.value = category;
+
+    // Select Type Radio
+    const radioId = type === 'income' ? 'typeIncome' : (type === 'debt' ? 'typeDebt' : 'typeExpense');
+    const radioEl = document.getElementById(radioId);
+    if (radioEl) radioEl.checked = true;
+
+    this.showOcrStatus(`✓ Datos detectados: ${type.toUpperCase()} por ${amount ? this.formatCurrency(amount) : 'monto detectado'}. ¡Revisa y confirma!`, true);
+  }
 
   // --- CLOUD SYNC ENGINE (PC <-> MOBILE) ---
   initCloudSync() {
@@ -419,6 +542,11 @@ class FinanceApp {
   }
 
   initEventListeners() {
+    
+    if (this.dom.ocrInput) {
+      this.dom.ocrInput.addEventListener('change', (e) => this.handleOcrScan(e));
+    }
+
     if (this.dom.transactionForm) {
       this.dom.transactionForm.addEventListener('submit', (e) => this.handleFormSubmit(e));
     }
