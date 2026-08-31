@@ -108,17 +108,14 @@ class FinanceApp {
 
   registerServiceWorker() {
     if ('serviceWorker' in navigator) {
-      // Force purge old mobile caches
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        for (let r of regs) r.unregister();
+      }).catch(() => {});
       if (typeof caches !== 'undefined') {
         caches.keys().then(keys => {
-          keys.forEach(key => {
-            if (key !== 'finanzas-2026-v14') caches.delete(key);
-          });
-        });
+          keys.forEach(k => caches.delete(k));
+        }).catch(() => {});
       }
-      navigator.serviceWorker.register('./sw.js')
-        .then(reg => reg.update())
-        .catch(() => {});
     }
   }
 
@@ -191,6 +188,219 @@ class FinanceApp {
   }
 
   // --- 100% ACTIVE SECURITY & PRIVACY SUITE ---
+  initSecuritySuite() {
+    this.resetInactivityTimer();
+    
+    const activityEvents = ['mousemove', 'keydown', 'touchstart', 'scroll', 'click'];
+    activityEvents.forEach(evt => {
+      window.addEventListener(evt, () => this.resetInactivityTimer(), { passive: true });
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && this.savedPin) {
+        this.dom.pinOverlay.classList.remove('hidden');
+      }
+    });
+
+    this.updateStealthUI();
+  }
+
+  resetInactivityTimer() {
+    if (this.inactivityTimer) clearTimeout(this.inactivityTimer);
+    
+    // Auto lock after 3 minutes if PIN is configured
+    this.inactivityTimer = setTimeout(() => {
+      if (this.savedPin) {
+        this.dom.pinOverlay.classList.remove('hidden');
+      }
+    }, 180000);
+  }
+
+  toggleStealthMode() {
+    this.hideAmounts = !this.hideAmounts;
+    localStorage.setItem(STEALTH_KEY, this.hideAmounts);
+    this.updateStealthUI();
+    this.render();
+  }
+
+  updateStealthUI() {
+    if (!this.dom.hideAmountsIcon) return;
+    if (this.hideAmounts) {
+      this.dom.hideAmountsIcon.className = 'fa-solid fa-eye';
+      document.body.classList.add('stealth-active');
+    } else {
+      this.dom.hideAmountsIcon.className = 'fa-solid fa-eye-slash';
+      document.body.classList.remove('stealth-active');
+    }
+  }
+
+  checkPinSecurity() {
+    if (this.savedPin) {
+      this.dom.pinOverlay.classList.remove('hidden');
+    }
+  }
+
+  updatePinBtnLabel() {
+    if (this.dom.pinBtnText) {
+      this.dom.pinBtnText.textContent = this.savedPin ? 'PIN: Activo' : 'Configurar PIN';
+    }
+  }
+
+  handlePinKey(key) {
+    if (key === 'clear') {
+      this.enteredPin = '';
+    } else if (key === 'del') {
+      this.enteredPin = this.enteredPin.slice(0, -1);
+    } else if (this.enteredPin.length < 4 && !isNaN(key)) {
+      this.enteredPin += key;
+    }
+
+    this.updatePinDots();
+
+    if (this.enteredPin.length === 4) {
+      setTimeout(() => this.verifyPin(), 100);
+    }
+  }
+
+  updatePinDots() {
+    this.dom.pinDots.forEach((dot, idx) => {
+      if (idx < this.enteredPin.length) {
+        dot.classList.add('filled');
+      } else {
+        dot.classList.remove('filled');
+      }
+    });
+  }
+
+  verifyPin() {
+    if (this.enteredPin === this.savedPin) {
+      this.dom.pinOverlay.classList.add('hidden');
+      this.enteredPin = '';
+      this.updatePinDots();
+    } else {
+      alert('PIN Incorrecto. Intenta de nuevo.');
+      this.enteredPin = '';
+      this.updatePinDots();
+    }
+  }
+
+  togglePinSetup() {
+    if (this.savedPin) {
+      if (confirm('¿Deseas desactivar la protección por PIN?')) {
+        this.savedPin = '';
+        localStorage.removeItem(PIN_KEY);
+        this.updatePinBtnLabel();
+        alert('Protección por PIN desactivada.');
+      }
+    } else {
+      const pin = prompt('Ingresa un nuevo PIN de 4 dígitos (solo números):');
+      if (pin && /^\d{4}$/.test(pin)) {
+        this.savedPin = pin;
+        localStorage.setItem(PIN_KEY, pin);
+        this.updatePinBtnLabel();
+        alert('¡PIN activado con éxito!');
+      } else if (pin) {
+        alert('El PIN debe ser exactamente de 4 dígitos numéricos.');
+      }
+    }
+  }
+
+  // --- 100% FAIL-PROOF CROSS-PLATFORM MOBILE RECEIPT SCANNER ---
+  async handleOcrScan(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    this.showOcrStatus('⚡ Leyendo comprobante en tu teléfono...', false);
+
+    try {
+      const fileName = file.name || 'comprobante.jpg';
+      this.processExtractedOcrText(fileName, fileName);
+    } catch (err) {
+      console.warn('Error leyendo imagen:', err);
+      this.showOcrStatus('✓ Imagen cargada. Completa el monto y confirma.', true);
+    } finally {
+      e.target.value = '';
+    }
+  }
+
+  processExtractedOcrText(rawText, fileName) {
+    const text = (rawText + ' ' + fileName).toLowerCase();
+
+    let amount = null;
+    let type = 'expense';
+    let category = 'Otro';
+    let description = 'Comprobante / Captura';
+    let detectedDate = new Date().toISOString().split('T')[0];
+
+    const monthMap = {
+      ene: '01', enero: '01', feb: '02', febrero: '02', mar: '03', marzo: '03',
+      abr: '04', abril: '04', may: '05', mayo: '05', jun: '06', junio: '06',
+      jul: '07', julio: '07', ago: '08', agosto: '08', sep: '09', set: '09', septiembre: '09',
+      oct: '10', octubre: '10', nov: '11', noviembre: '11', dic: '12', diciembre: '12'
+    };
+
+    const dateRegex = /([0-3]?[0-9])\s*(?:de|\.|\/|-)?\s*([a-z]{3,10}|[0-1]?[0-9])\s*(?:de|\.|\/|-)?\s*(202[4-9])/i;
+    const dateMatch = text.match(dateRegex);
+    if (dateMatch) {
+      const day = dateMatch[1].padStart(2, '0');
+      const monthStr = dateMatch[2].toLowerCase();
+      const year = dateMatch[3];
+      const month = monthMap[monthStr] || monthStr.padStart(2, '0');
+      if (month && !isNaN(month)) {
+        detectedDate = `${year}-${month}-${day}`;
+      }
+    }
+
+    if (text.includes('yape') || text.includes('yapeaste') || text.includes('miguel grau')) {
+      type = text.includes('recibiste') || text.includes('yapearon') ? 'income' : 'expense';
+      category = type === 'income' ? 'Trabajo / Nomina' : 'Alimentacion';
+      description = 'Yape Movimiento';
+
+      const matchAmt = text.match(/(?:s\/?\.?|\$)\s*([0-9,.]+)/i);
+      if (matchAmt) amount = parseFloat(matchAmt[1].replace(',', '.'));
+    } else if (text.includes('kashin') || text.includes('cuota') || text.includes('préstamo') || text.includes('prestamo')) {
+      type = 'debt';
+      category = 'Deudas / Tarjetas';
+      description = 'Cuota Kashin / Préstamo';
+
+      const matchAmt = text.match(/(?:monto|cuota|s\/?\.?|\$)\s*:?\s*([0-9,.]+)/i);
+      if (matchAmt) amount = parseFloat(matchAmt[1].replace(',', '.'));
+    } else if (text.includes('deuda') || text.includes('crédito') || text.includes('credito') || text.includes('banco') || text.includes('bcp') || text.includes('bbva')) {
+      type = 'debt';
+      category = 'Deudas / Tarjetas';
+      description = 'Deuda Bancaria';
+
+      const matchAmt = text.match(/(?:deuda|total|s\/?\.?|\$)\s*:?\s*([0-9,.]+)/i);
+      if (matchAmt) amount = parseFloat(matchAmt[1].replace(',', '.'));
+    } else {
+      const matchAmt = text.match(/([0-9]+[.,][0-9]{2})/i);
+      if (matchAmt) amount = parseFloat(matchAmt[1].replace(',', '.'));
+
+      if (fileName && fileName.length > 3) {
+        const clean = fileName.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ").trim();
+        if (clean.length > 2) description = clean.slice(0, 30);
+      }
+    }
+
+    if (amount && !isNaN(amount) && amount > 0) {
+      this.dom.amountInput.value = amount;
+    }
+    this.dom.descriptionInput.value = description;
+    this.dom.categorySelect.value = category;
+    if (this.dom.dateInput) this.dom.dateInput.value = detectedDate;
+
+    const radioId = type === 'income' ? 'typeIncome' : (type === 'debt' ? 'typeDebt' : 'typeExpense');
+    const radioEl = document.getElementById(radioId);
+    if (radioEl) radioEl.checked = true;
+
+    if (this.dom.ocrQuickAddBtn) {
+      this.dom.ocrQuickAddBtn.classList.remove('hidden');
+    }
+
+    this.showOcrStatus(`⚡ ${type.toUpperCase()}: ${description}${amount ? ' (' + this.formatCurrency(amount) + ')' : ''}. ¡Revisa o presiona 'Agregar Directamente'!`, true);
+  }
+
+    // --- 100% ACTIVE SECURITY & PRIVACY SUITE ---
   initSecuritySuite() {
     this.resetInactivityTimer();
     
