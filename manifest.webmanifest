@@ -1,0 +1,17 @@
+{
+  "name": "Finanzas Personales 2026",
+  "short_name": "Finanzas 2026",
+  "description": "Control privado de ingresos, gastos y deudas",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#090D16",
+  "theme_color": "#6366F1",
+  "icons": [
+    {
+      "src": "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/svgs/solid/wallet.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

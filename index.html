@@ -3,24 +3,74 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Control Financiero Personal 2026 - Herramienta web privada, minimalista y moderna de gestión de ingresos, gastos y deudas.">
-  <title>Control Financiero Personal 2026 | Fintech Dashboard</title>
+  <meta name="description" content="Control Financiero Personal 2026 - Dashboard Fintech PWA con Gráficos, Presupuestos, Metas de Ahorro y Seguridad Local.">
+  <title>Control Financiero Personal 2026 | Fintech Dashboard PWA</title>
   
-  <!-- Typography & Icons -->
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#6366F1">
+
+  <!-- Resource Hints for Performance Optimization -->
+  <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+  <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+  <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   
-  <!-- Styles -->
+  <!-- Typography & Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
+  
+  <!-- Chart.js Engine -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Optimized Stylesheet -->
   <link rel="stylesheet" href="styles.css">
+  
+  <!-- Non-blocking Parallel Script Execution -->
+  <script src="app.js" defer></script>
 </head>
 <body>
+  <!-- PIN Security Lock Overlay -->
+  <div id="pinOverlay" class="pin-overlay hidden">
+    <div class="pin-card">
+      <div class="pin-icon">
+        <i class="fa-solid fa-lock"></i>
+      </div>
+      <h2>Seguridad Financiera</h2>
+      <p>Ingresa tu PIN de 4 dígitos para acceder al Dashboard</p>
+
+      <div class="pin-dots">
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+      </div>
+
+      <div class="pin-keypad">
+        <button type="button" class="pin-key" data-key="1">1</button>
+        <button type="button" class="pin-key" data-key="2">2</button>
+        <button type="button" class="pin-key" data-key="3">3</button>
+        <button type="button" class="pin-key" data-key="4">4</button>
+        <button type="button" class="pin-key" data-key="5">5</button>
+        <button type="button" class="pin-key" data-key="6">6</button>
+        <button type="button" class="pin-key" data-key="7">7</button>
+        <button type="button" class="pin-key" data-key="8">8</button>
+        <button type="button" class="pin-key" data-key="9">9</button>
+        <button type="button" class="pin-key action" data-key="clear">C</button>
+        <button type="button" class="pin-key" data-key="0">0</button>
+        <button type="button" class="pin-key action" data-key="del"><i class="fa-solid fa-backspace"></i></button>
+      </div>
+    </div>
+  </div>
+
   <div class="app-container">
     <!-- App Header -->
     <header class="app-header">
       <div class="header-brand">
-        <div class="brand-icon">
+        <div class="brand-icon" aria-hidden="true">
           <i class="fa-solid fa-wallet"></i>
         </div>
         <div>
@@ -30,14 +80,13 @@
       </div>
 
       <div class="header-controls">
-        <div class="badge-privacy">
-          <i class="fa-solid fa-shield-halved"></i>
-          <span>100% Local & Privado</span>
-        </div>
+        <button type="button" id="pinToggleBtn" class="btn btn-secondary btn-sm" title="Configurar PIN de seguridad">
+          <i class="fa-solid fa-shield-halved"></i> <span id="pinBtnText">Configurar PIN</span>
+        </button>
 
         <div class="currency-selector-wrapper">
-          <label for="currencySelect" class="sr-only">Moneda</label>
-          <select id="currencySelect" class="form-select-sm">
+          <label for="currencySelect" class="sr-only">Moneda preferida</label>
+          <select id="currencySelect" class="form-select-sm" aria-label="Seleccionar Moneda">
             <option value="PEN" selected>PEN (S/)</option>
             <option value="USD">USD ($)</option>
             <option value="EUR">EUR (€)</option>
@@ -48,105 +97,195 @@
       </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="main-layout">
-      <!-- Summary Dashboard / KPI Cards -->
-      <section class="kpi-grid" aria-label="Resumen de balance">
-        <!-- Ingresos Card -->
-        <div class="kpi-card card-income">
+    <!-- Main Dashboard -->
+    <main class="main-dashboard">
+      <!-- Overview KPI Cards Section -->
+      <section class="kpi-grid" aria-label="Resumen Financiero" role="region">
+        <!-- Total Ingresos Card -->
+        <article class="kpi-card card-income">
           <div class="kpi-header">
-            <span class="kpi-label">Ingresos Totales</span>
-            <div class="kpi-icon icon-income">
+            <span class="kpi-label">Total Ingresos</span>
+            <div class="kpi-icon icon-income" aria-hidden="true">
               <i class="fa-solid fa-arrow-trend-up"></i>
             </div>
           </div>
-          <div class="kpi-value" id="totalIncome">$ 0</div>
+          <div class="kpi-value" id="totalIncome" aria-live="polite">$ 0.00</div>
           <div class="kpi-subtext">
-            <span id="incomeCount">0</span> registro(s) activo(s)
+            <span id="incomeCount">0</span> registros acumulados
           </div>
-        </div>
+        </article>
 
-        <!-- Gastos & Deudas Card -->
-        <div class="kpi-card card-expenses">
+        <!-- Total Gastos Card -->
+        <article class="kpi-card card-expense">
           <div class="kpi-header">
-            <span class="kpi-label">Gastos y Deudas</span>
-            <div class="kpi-icon icon-expense">
+            <span class="kpi-label">Total Gastos</span>
+            <div class="kpi-icon icon-expense" aria-hidden="true">
               <i class="fa-solid fa-arrow-trend-down"></i>
             </div>
           </div>
-          <div class="kpi-value" id="totalExpenses">$ 0</div>
+          <div class="kpi-value" id="totalExpenses" aria-live="polite">$ 0.00</div>
           <div class="kpi-subtext">
-            <span id="expenseCount">0</span> registro(s) de salida
+            <span id="expenseCount">0</span> salidas registradas
           </div>
-        </div>
+        </article>
 
         <!-- Balance Neto Card -->
-        <div class="kpi-card card-balance">
+        <article class="kpi-card card-balance">
           <div class="kpi-header">
             <span class="kpi-label">Balance Disponible</span>
-            <div class="kpi-icon icon-balance">
+            <div class="kpi-icon icon-balance" aria-hidden="true">
               <i class="fa-solid fa-scale-balanced"></i>
             </div>
           </div>
-          <div class="kpi-value" id="netBalance">$ 0</div>
-          <div class="kpi-subtext" id="balanceStatusText">
+          <div class="kpi-value" id="netBalance" aria-live="polite">$ 0.00</div>
+          <div class="kpi-subtext" id="balanceStatusText" aria-live="polite">
             Sin movimientos registrados
           </div>
-        </div>
+        </article>
 
-        <!-- Ratio de Salud Card -->
-        <div class="kpi-card card-health">
+        <!-- Ratio de Ahorro Card -->
+        <article class="kpi-card card-health">
           <div class="kpi-header">
             <span class="kpi-label">Capacidad de Ahorro</span>
-            <div class="kpi-icon icon-health">
+            <div class="kpi-icon icon-health" aria-hidden="true">
               <i class="fa-solid fa-piggy-bank"></i>
             </div>
           </div>
-          <div class="kpi-value" id="healthRatio">0%</div>
+          <div class="kpi-value" id="healthRatio" aria-live="polite">0%</div>
           <div class="kpi-subtext">
             Margen libre de tus ingresos
           </div>
-        </div>
+        </article>
       </section>
 
       <!-- Financial Health Progress Bar -->
-      <section class="progress-section card-floating">
+      <section class="progress-section card-floating" aria-label="Distribución de gastos">
         <div class="progress-info">
           <span>Distribución de Ingresos Comprometidos</span>
-          <span id="progressPercentage">0% utilizado</span>
+          <span id="progressPercentage" aria-live="polite">0% utilizado</span>
         </div>
-        <div class="progress-bar-container">
+        <div class="progress-bar-container" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
           <div class="progress-bar-fill" id="progressBarFill" style="width: 0%;"></div>
         </div>
       </section>
 
-      <!-- Main Columns: Form & List -->
+      <!-- VISUAL ANALYTICS CHARTS SECTION -->
+      <section class="charts-grid" aria-label="Análisis Visual">
+        <article class="card-floating chart-card">
+          <div class="card-title">
+            <i class="fa-solid fa-chart-pie"></i>
+            <h2>Gastos por Categoría</h2>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="expenseChartCanvas"></canvas>
+          </div>
+        </article>
+
+        <article class="card-floating chart-card">
+          <div class="card-title">
+            <i class="fa-solid fa-chart-column"></i>
+            <h2>Ingresos vs Gastos</h2>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="barChartCanvas"></canvas>
+          </div>
+        </article>
+      </section>
+
+      <!-- ADVANCED FINANCIAL MODULES: BUDGETS & SAVINGS GOALS -->
+      <div class="modules-grid">
+        <!-- Module 1: Presupuestos Mensuales -->
+        <section class="card-floating budget-card">
+          <div class="card-title-between">
+            <div class="card-title">
+              <i class="fa-solid fa-bullseye"></i>
+              <h2>Presupuestos por Categoría</h2>
+            </div>
+            <button type="button" id="setBudgetBtn" class="btn btn-secondary btn-sm">
+              <i class="fa-solid fa-pen-to-square"></i> Fijar Límite
+            </button>
+          </div>
+          <div class="budgets-container" id="budgetsList">
+            <!-- Rendered dynamically -->
+          </div>
+        </section>
+
+        <!-- Module 2: Metas de Ahorro -->
+        <section class="card-floating goals-card">
+          <div class="card-title-between">
+            <div class="card-title">
+              <i class="fa-solid fa-piggy-bank"></i>
+              <h2>Metas de Ahorro</h2>
+            </div>
+            <button type="button" id="addGoalBtn" class="btn btn-primary btn-sm">
+              <i class="fa-solid fa-plus"></i> Nueva Meta
+            </button>
+          </div>
+          <div class="goals-container" id="goalsList">
+            <!-- Rendered dynamically -->
+          </div>
+        </section>
+      </div>
+
+      <!-- DEBT PAYOFF CALCULATOR TOOL -->
+      <section class="card-floating calc-card" aria-label="Calculadora de Deudas">
+        <div class="card-title">
+          <i class="fa-solid fa-calculator"></i>
+          <h2>Calculadora de Amortización de Deudas</h2>
+        </div>
+        <div class="calc-grid">
+          <div class="form-group">
+            <label for="calcAmount">Deuda Total</label>
+            <input type="number" id="calcAmount" class="form-input" placeholder="Ej. 5000" min="0">
+          </div>
+          <div class="form-group">
+            <label for="calcRate">Tasa de Interés Anual (%)</label>
+            <input type="number" id="calcRate" class="form-input" placeholder="Ej. 18" min="0" step="0.1">
+          </div>
+          <div class="form-group">
+            <label for="calcPayment">Pago Mensual Destinado</label>
+            <input type="number" id="calcPayment" class="form-input" placeholder="Ej. 300" min="0">
+          </div>
+          <div class="calc-result-box" id="calcResultBox">
+            <div class="calc-metric">
+              <span class="calc-label">Tiempo para Liquidar:</span>
+              <span class="calc-val" id="calcMonthsResult">-- meses</span>
+            </div>
+            <div class="calc-metric">
+              <span class="calc-label">Intereses Totales:</span>
+              <span class="calc-val" id="calcInterestResult">$ --</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Main Workspace: Form & List -->
       <div class="workspace-grid">
         <!-- Column 1: Add Transaction Form -->
-        <section class="card-floating form-card">
+        <section class="card-floating form-card" aria-label="Formulario de Registro">
           <div class="card-title">
-            <i class="fa-solid fa-circle-plus"></i>
+            <i class="fa-solid fa-circle-plus" aria-hidden="true"></i>
             <h2>Nuevo Registro</h2>
           </div>
 
           <form id="transactionForm" novalidate>
             <!-- Tipo de Movimiento -->
             <div class="form-group">
-              <label>Tipo de Movimiento</label>
-              <div class="type-selector">
+              <label id="typeLabel">Tipo de Movimiento</label>
+              <div class="type-selector" role="radiogroup" aria-labelledby="typeLabel">
                 <input type="radio" id="typeIncome" name="transactionType" value="income" checked>
                 <label for="typeIncome" class="type-btn btn-type-income">
-                  <i class="fa-solid fa-arrow-up"></i> Ingreso
+                  <i class="fa-solid fa-arrow-up" aria-hidden="true"></i> Ingreso
                 </label>
 
                 <input type="radio" id="typeExpense" name="transactionType" value="expense">
                 <label for="typeExpense" class="type-btn btn-type-expense">
-                  <i class="fa-solid fa-arrow-down"></i> Gasto
+                  <i class="fa-solid fa-arrow-down" aria-hidden="true"></i> Gasto
                 </label>
 
                 <input type="radio" id="typeDebt" name="transactionType" value="debt">
                 <label for="typeDebt" class="type-btn btn-type-debt">
-                  <i class="fa-solid fa-credit-card"></i> Deuda
+                  <i class="fa-solid fa-credit-card" aria-hidden="true"></i> Deuda
                 </label>
               </div>
             </div>
@@ -154,30 +293,30 @@
             <!-- Concepto / Descripción -->
             <div class="form-group">
               <label for="descriptionInput">Concepto / Nombre</label>
-              <input type="text" id="descriptionInput" class="form-input" placeholder="Ej. Salario mensual, Arriendo, Tarjeta Crédito..." required>
+              <input type="text" id="descriptionInput" class="form-input" placeholder="Ej. Salario mensual, Arriendo, Tarjeta Crédito..." required autocomplete="off">
             </div>
 
             <!-- Monto & Categoría -->
             <div class="form-row">
               <div class="form-group col-half">
-                <label for="amountInput">Monto ($)</label>
-                <input type="number" id="amountInput" class="form-input" placeholder="0.00" min="0" step="any" required>
+                <label for="amountInput">Monto</label>
+                <input type="number" id="amountInput" class="form-input" placeholder="0.00" min="0.01" step="any" required>
               </div>
 
               <div class="form-group col-half">
                 <label for="categorySelect">Categoría</label>
                 <select id="categorySelect" class="form-select" required>
-                  <option value="Trabajo / Nomina">💼 Trabajo / Nómina</option>
+                  <option value="Trabajo / Nomina">💼 Trabajo / Nómna</option>
                   <option value="Vivienda">🏠 Vivienda</option>
                   <option value="Servicios">⚡ Servicios Públicos</option>
                   <option value="Alimentacion">🛒 Alimentación</option>
                   <option value="Transporte">🚗 Transporte</option>
-                  <option value="Salud">🏥 Salud</option>
-                  <option value="Educacion">🎓 Educación</option>
+                  <option value="Salud">🩺 Salud</option>
+                  <option value="Educacion">📚 Educación</option>
                   <option value="Deudas / Tarjetas">💳 Deudas / Tarjetas</option>
-                  <option value="Entretenimiento">🍿 Ocio / Varios</option>
+                  <option value="Entretenimiento">🎬 Ocio / Varios</option>
                   <option value="Inversion">📈 Inversión / Ahorro</option>
-                  <option value="Otro">🌀 Otro</option>
+                  <option value="Otro">📦 Otro</option>
                 </select>
               </div>
             </div>
@@ -199,62 +338,67 @@
             </div>
 
             <button type="submit" class="btn btn-primary btn-block">
-              <i class="fa-solid fa-plus"></i> Añadir Registro
+              <i class="fa-solid fa-plus" aria-hidden="true"></i> Añadir Registro
             </button>
           </form>
         </section>
 
         <!-- Column 2: Transactions List -->
-        <section class="card-floating list-card">
+        <section class="card-floating list-card" aria-label="Lista de Movimientos">
           <div class="list-header">
             <div class="card-title">
-              <i class="fa-solid fa-list-check"></i>
+              <i class="fa-solid fa-list-check" aria-hidden="true"></i>
               <h2>Movimientos 2026</h2>
             </div>
 
             <!-- Quick Filters -->
-            <div class="filter-pills">
-              <button class="pill active" data-filter="all">Todos</button>
-              <button class="pill" data-filter="income">Ingresos</button>
-              <button class="pill" data-filter="expense">Gastos</button>
-              <button class="pill" data-filter="debt">Deudas</button>
-              <button class="pill" data-filter="fixed">Fijos</button>
+            <div class="filter-pills" role="tablist" aria-label="Filtros de transacciones">
+              <button type="button" class="pill active" data-filter="all" role="tab" aria-selected="true">Todos</button>
+              <button type="button" class="pill" data-filter="income" role="tab" aria-selected="false">Ingresos</button>
+              <button type="button" class="pill" data-filter="expense" role="tab" aria-selected="false">Gastos</button>
+              <button type="button" class="pill" data-filter="debt" role="tab" aria-selected="false">Deudas</button>
+              <button type="button" class="pill" data-filter="fixed" role="tab" aria-selected="false">Fijos</button>
             </div>
           </div>
 
           <!-- Search Bar -->
           <div class="search-bar">
-            <i class="fa-solid fa-magnifying-glass search-icon"></i>
-            <input type="text" id="searchInput" class="search-input" placeholder="Buscar por concepto o categoría...">
+            <i class="fa-solid fa-magnifying-glass search-icon" aria-hidden="true"></i>
+            <label for="searchInput" class="sr-only">Buscar movimientos</label>
+            <input type="text" id="searchInput" class="search-input" placeholder="Buscar por concepto o categoría..." autocomplete="off">
           </div>
 
           <!-- List Container -->
-          <div class="transactions-container" id="transactionsList">
+          <div class="transactions-container" id="transactionsList" aria-live="polite" role="region" aria-label="Listado dinámico">
             <!-- Items renders dynamically via app.js -->
           </div>
         </section>
       </div>
 
       <!-- Backup & Data Management -->
-      <section class="card-floating data-management-card">
+      <section class="card-floating data-management-card" aria-label="Gestión de datos">
         <div class="data-management-header">
           <div>
-            <h3><i class="fa-solid fa-database"></i> Gestión de Datos & Privacidad</h3>
+            <h3><i class="fa-solid fa-database" aria-hidden="true"></i> Gestión de Datos &amp; Privacidad</h3>
             <p class="text-muted">Tus registros viven exclusivamente en el almacenamiento interno de tu navegador.</p>
           </div>
 
           <div class="data-actions">
-            <button id="exportBtn" class="btn btn-secondary">
-              <i class="fa-solid fa-download"></i> Exportar Respaldo JSON
+            <button type="button" id="exportCsvBtn" class="btn btn-secondary">
+              <i class="fa-solid fa-file-excel" aria-hidden="true"></i> Exportar Excel (CSV)
+            </button>
+
+            <button type="button" id="exportBtn" class="btn btn-secondary">
+              <i class="fa-solid fa-download" aria-hidden="true"></i> Respaldo JSON
             </button>
             
             <label for="importFile" class="btn btn-secondary btn-file">
-              <i class="fa-solid fa-upload"></i> Importar Respaldo
+              <i class="fa-solid fa-upload" aria-hidden="true"></i> Importar Respaldo
               <input type="file" id="importFile" accept=".json" class="sr-only">
             </label>
 
-            <button id="clearAllBtn" class="btn btn-danger-outline">
-              <i class="fa-solid fa-trash-can"></i> Reiniciar Datos
+            <button type="button" id="clearAllBtn" class="btn btn-danger-outline">
+              <i class="fa-solid fa-trash-can" aria-hidden="true"></i> Reiniciar Datos
             </button>
           </div>
         </div>
@@ -263,11 +407,8 @@
 
     <!-- Footer -->
     <footer class="app-footer">
-      <p>Control Financiero Personal &copy; 2026 &bull; Diseñado con Arquitectura Limpia &bull; Modo Oscuro Minimalista</p>
+      <p>Control Financiero Personal &copy; 2026 &bull; Fintech Dashboard PWA &bull; Modo Oscuro Minimalista</p>
     </footer>
   </div>
-
-  <!-- JavaScript -->
-  <script src="app.js"></script>
 </body>
 </html>
